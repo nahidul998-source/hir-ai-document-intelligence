@@ -1,0 +1,7 @@
+ai:
+  provider_priority:
+    - local_qwen
+    - github_models
+    - gemini
+  auto_fallback: true
+  hardware_detection: true
