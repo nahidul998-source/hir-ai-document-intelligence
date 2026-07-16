@@ -1,7 +1,33 @@
-ai:
-  provider_priority:
-    - local_qwen
-    - github_models
-    - gemini
-  auto_fallback: true
-  hardware_detection: true
+# AI Providers Configuration
+
+providers:
+  local_qwen:
+    name: "local_qwen"
+    enabled: true
+    api_url: "http://localhost:8000/v1"
+    api_key: "dummy-key-for-local"
+    model_name: "Qwen/Qwen2.5-VL-7B-Instruct"
+    timeout: 30
+
+  github:
+    name: "github"
+    enabled: true
+    api_url: "https://models.inference.ai.azure.com"
+    api_key: "" # To be loaded from env (GITHUB_TOKEN)
+    model_name: "gpt-4o"
+    timeout: 30
+
+  gemini:
+    name: "gemini"
+    enabled: true
+    api_url: "https://generativelanguage.googleapis.com"
+    api_key: "" # To be loaded from env (GEMINI_API_KEY)
+    model_name: "gemini-1.5-pro"
+    timeout: 30
+
+# Priority list for fallback mechanism
+# The system tries providers sequentially from top to bottom
+priority:
+  - local_qwen
+  - github
+  - gemini

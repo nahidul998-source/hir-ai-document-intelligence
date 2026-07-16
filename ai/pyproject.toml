@@ -1,0 +1,23 @@
+[project]
+name = "hir-ai-service"
+version = "0.1.0"
+description = "AI Processing Service for HIR Document Intelligence Platform"
+requires-python = ">=3.12"
+dependencies = [
+    "celery>=5.3.6",
+    "redis>=5.0.3",
+    "aio-pika>=9.4.0",
+    "minio>=7.2.5",
+    "pydantic>=2.6.4",
+    "pydantic-settings>=2.2.1",
+    "pyyaml>=6.0.1",
+    # Placeholder for actual AI processing models in Phase 2
+    # "docling>=1.0.0",
+    # "paddleocr>=2.7.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.1.1",
+    "pytest-asyncio>=0.23.5",
+]

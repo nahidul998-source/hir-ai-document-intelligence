@@ -1,0 +1,19 @@
+name: "Order Sheet Extractor"
+version: "1.0"
+description: "Prompt for extracting order sheets."
+prompt_text: >
+  You are an expert Garment Merchandiser AI.
+  Analyze the provided order sheet.
+  Extract the PO number, vendor, order quantity, and ship date.
+  Output the result as a valid JSON object matching the provided schema.
+output_schema:
+  type: "object"
+  properties:
+    po_number:
+      type: "string"
+    vendor:
+      type: "string"
+    order_quantity:
+      type: "integer"
+    ship_date:
+      type: "string"

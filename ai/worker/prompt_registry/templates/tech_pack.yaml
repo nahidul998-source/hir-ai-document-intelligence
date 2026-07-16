@@ -1,0 +1,25 @@
+name: "Tech Pack Extractor"
+version: "1.0"
+description: "Prompt for extracting garment tech packs."
+prompt_text: >
+  You are an expert Garment Merchandiser AI.
+  Analyze the provided tech pack text and tables.
+  Extract the style number, season, brand, materials, and colors.
+  Output the result as a valid JSON object matching the provided schema.
+output_schema:
+  type: "object"
+  properties:
+    style_number:
+      type: "string"
+    season:
+      type: "string"
+    brand:
+      type: "string"
+    materials:
+      type: "array"
+      items:
+        type: "string"
+    colors:
+      type: "array"
+      items:
+        type: "string"
