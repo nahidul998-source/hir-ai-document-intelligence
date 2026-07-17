@@ -1,16 +1,42 @@
 from contextlib import asynccontextmanager
 import logging
+import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents
+from app.api.routers import auth, projects, documents, monitoring
+from app.infrastructure.monitoring.telemetry import setup_telemetry
+from app.infrastructure.monitoring.metrics import PrometheusMiddleware
 
-# Configure structured logging for the application
+# Configure structured JSON logging for the application
+class JSONFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        log_data = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "name": record.name,
+            "message": record.getMessage(),
+        }
+        # Inject standard telemetry/alert context properties if present
+        if hasattr(record, "service"):
+            log_data["service"] = record.service
+        if hasattr(record, "level") and isinstance(record.level, str):
+            log_data["alert_level"] = record.level
+        if hasattr(record, "details"):
+            log_data["details"] = record.details
+        if record.exc_info:
+            log_data["exception"] = self.formatException(record.exc_info)
+        return json.dumps(log_data)
+
+log_handler = logging.StreamHandler()
+log_handler.setFormatter(JSONFormatter())
+
+# Override root logging settings
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    handlers=[log_handler]
 )
 logger = logging.getLogger(__name__)
 
@@ -38,6 +64,12 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Initialize OpenTelemetry telemetry setup
+setup_telemetry(app)
+
+# Inject Prometheus metrics collector middleware
+app.add_middleware(PrometheusMiddleware)
+
 # Setup CORS middleware for web frontend interaction
 app.add_middleware(
     CORSMiddleware,
@@ -51,6 +83,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
 app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
+app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}", tags=["Monitoring"])
 
 
 @app.get("/health", tags=["Monitoring"])
@@ -61,3 +94,4 @@ async def health_check():
         "app_name": settings.APP_NAME,
         "env": settings.APP_ENV
     }
+

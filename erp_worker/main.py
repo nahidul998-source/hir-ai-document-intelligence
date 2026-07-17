@@ -41,6 +41,20 @@ async def process_erp_push(message: aio_pika.IncomingMessage) -> None:
             # The message will be nacked and because of DLX config, it will route to DLQ
             raise e
 
+async def start_heartbeat():
+    import redis.asyncio as aioredis
+    from datetime import datetime
+    logger.info("Starting ERP Worker heartbeat loop...")
+    while True:
+        try:
+            client = aioredis.from_url(settings.REDIS_URL)
+            await client.set("worker:heartbeat:erp_worker", datetime.utcnow().isoformat(), ex=30)
+            await client.close()
+        except Exception as e:
+            logger.warning(f"Failed to record ERP Worker heartbeat: {e}")
+        await asyncio.sleep(10)
+
+
 async def main() -> None:
     logger.info("Starting HIR ERP Worker microservice...")
     connection = None
@@ -70,9 +84,13 @@ async def main() -> None:
     logger.info("Listening for 'document.approved' events on 'hir.erp_worker.processing'...")
     await main_queue.consume(process_erp_push)
 
+    # Start heartbeat task in background
+    heartbeat_task = asyncio.create_task(start_heartbeat())
+
     try:
         await asyncio.Future()
     finally:
+        heartbeat_task.cancel()
         await connection.close()
 
 if __name__ == "__main__":

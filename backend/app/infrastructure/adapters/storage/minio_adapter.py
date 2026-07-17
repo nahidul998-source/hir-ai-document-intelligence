@@ -18,7 +18,13 @@ class MinIOStorageAdapter(IStorageAdapter):
             secret_key=settings.MINIO_ROOT_PASSWORD,
             secure=secure
         )
-        self._ensure_bucket(settings.MINIO_BUCKET_NAME)
+        try:
+            self._ensure_bucket(settings.MINIO_BUCKET_NAME)
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(
+                f"Could not connect to MinIO on startup: {e}. Storage adapter running in degraded mode."
+            )
 
     def _ensure_bucket(self, bucket_name: str) -> None:
         """Helper to ensure target bucket exists."""
