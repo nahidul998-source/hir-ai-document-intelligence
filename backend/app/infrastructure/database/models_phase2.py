@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, List
-from sqlalchemy import String, ForeignKey, DateTime, Integer, Float, JSON
+from sqlalchemy import String, ForeignKey, DateTime, Integer, Float, JSON, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import AuditableBase
