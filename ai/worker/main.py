@@ -79,7 +79,7 @@ async def main() -> None:
 
     channel = await connection.channel()
     # Configure prefetch count (process 1 message at a time to distribute CPU load)
-    await channel.set_prefetch(prefetch_count=1)
+    await channel.set_qos(prefetch_count=1)
 
     # Use standardized topology
     main_exchange, main_queue = await setup_queue_topology(

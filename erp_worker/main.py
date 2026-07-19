@@ -73,7 +73,7 @@ async def main() -> None:
         return
 
     channel = await connection.channel()
-    await channel.set_prefetch(prefetch_count=1)
+    await channel.set_qos(prefetch_count=1)
 
     main_exchange, main_queue = await setup_queue_topology(
         channel=channel,
