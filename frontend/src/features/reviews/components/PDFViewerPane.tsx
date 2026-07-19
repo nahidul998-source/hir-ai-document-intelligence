@@ -1,8 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
-import { useReviewStore } from '../../../../stores/reviewStore';
+import { useReviewStore, HighlightBox } from '../../../stores/reviewStore';
 import { ZoomIn, ZoomOut, Maximize, RotateCw } from 'lucide-react';
 
 // Setup PDF worker
@@ -60,7 +60,7 @@ export const PDFViewerPane: React.FC = () => {
                             </div>
                         }
                     >
-                        {Array.from(new Array(numPages), (el, index) => (
+                        {Array.from(new Array(numPages), (_, index) => (
                             <div key={`page_${index + 1}`} className="relative shadow-lg ring-1 ring-slate-900/5">
                                 <Page 
                                     pageNumber={index + 1} 
@@ -72,8 +72,8 @@ export const PDFViewerPane: React.FC = () => {
                                 />
                                 {/* Bounding Box Overlays */}
                                 {highlights
-                                    .filter(h => h.page === index + 1)
-                                    .map(h => {
+                                    .filter((h: HighlightBox) => h.page === index + 1)
+                                    .map((h: HighlightBox) => {
                                         const isActive = h.field_name === activeField;
                                         return (
                                             <div

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-interface HighlightBox {
+export interface HighlightBox {
   id: string;
   field_name: string;
   page: number;

@@ -6,13 +6,16 @@ import { DocumentUpload } from './features/documents/components/DocumentUpload';
 import { DocumentList } from './features/documents/components/DocumentList';
 import { HealthDashboard } from './features/monitoring/components/HealthDashboard';
 import { AuditDashboard } from './features/monitoring/components/AuditDashboard';
+import { LearningDashboard } from './features/learning/components/LearningDashboard';
+import { AdminDashboard } from './features/admin/components/AdminDashboard';
+import { AnalyticsDashboard } from './features/analytics/components/AnalyticsDashboard';
 import { apiClient } from './lib/api-client';
 
 const App: React.FC = () => {
   const { isAuthenticated, logout } = useAuthStore();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [documents, setDocuments] = useState([]);
-  const [currentTab, setCurrentTab] = useState<'workspace' | 'health' | 'audit'>('workspace');
+  const [currentTab, setCurrentTab] = useState<'workspace' | 'health' | 'audit' | 'learning' | 'admin' | 'analytics'>('workspace');
 
   const fetchDocuments = async () => {
     if (!selectedProjectId) return;
@@ -54,6 +57,30 @@ const App: React.FC = () => {
               }`}
             >
               Document Workspace
+            </button>
+            <button
+              onClick={() => setCurrentTab('analytics')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
+                currentTab === 'analytics' ? 'bg-violet-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }`}
+            >
+              Analytics & BI
+            </button>
+            <button
+              onClick={() => setCurrentTab('learning')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
+                currentTab === 'learning' ? 'bg-violet-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }`}
+            >
+              Continuous Learning
+            </button>
+            <button
+              onClick={() => setCurrentTab('admin')}
+              className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
+                currentTab === 'admin' ? 'bg-violet-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+              }`}
+            >
+              Enterprise Admin
             </button>
             <button
               onClick={() => setCurrentTab('health')}
@@ -114,7 +141,17 @@ const App: React.FC = () => {
           </>
         ) : (
           <main className="flex-1 p-8 overflow-y-auto">
-            {currentTab === 'health' ? <HealthDashboard /> : <AuditDashboard />}
+            {currentTab === 'analytics' ? (
+              <AnalyticsDashboard />
+            ) : currentTab === 'learning' ? (
+              <LearningDashboard />
+            ) : currentTab === 'admin' ? (
+              <AdminDashboard />
+            ) : currentTab === 'health' ? (
+              <HealthDashboard />
+            ) : (
+              <AuditDashboard />
+            )}
           </main>
         )}
       </div>

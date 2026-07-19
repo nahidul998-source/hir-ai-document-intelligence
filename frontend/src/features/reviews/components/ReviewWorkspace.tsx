@@ -1,14 +1,11 @@
 import React, { useEffect } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
+import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { PDFViewerPane } from './PDFViewerPane';
 import { ERPFormPane } from './ERPFormPane';
 import { ContextPane } from './ContextPane';
-import { useReviewStore } from '../../../../stores/reviewStore';
-
 export const ReviewWorkspace: React.FC = () => {
     // We bind hotkeys globally at the workspace level (or app level)
     // using a dedicated hook or event listeners.
-    const { setActiveField } = useReviewStore();
 
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -29,7 +26,7 @@ export const ReviewWorkspace: React.FC = () => {
 
     return (
         <div className="flex h-[calc(100vh-4rem)] w-full bg-slate-50 overflow-hidden text-slate-900">
-            <PanelGroup direction="horizontal" autoSaveId="hir-workspace-layout">
+            <PanelGroup orientation="horizontal" id="hir-workspace-layout">
                 {/* Left Pane - PDF Viewer */}
                 <Panel defaultSize={35} minSize={20} className="bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
                     <PDFViewerPane />

@@ -15,6 +15,8 @@ class Permissions:
     PROJECT_READ = "project:read"
     ERP_PUSH = "erp:push"
     AI_PROCESS = "ai:process"
+    ADMIN_READ = "admin:read"
+    ADMIN_WRITE = "admin:write"
 
 # Pre-seeded role-to-permissions mapping (typically stored in DB)
 DEFAULT_ROLES = {
@@ -22,7 +24,7 @@ DEFAULT_ROLES = {
         Permissions.DOCUMENT_READ, Permissions.DOCUMENT_CREATE, Permissions.DOCUMENT_DELETE,
         Permissions.REVIEW_READ, Permissions.REVIEW_WRITE, Permissions.REVIEW_APPROVE,
         Permissions.PROJECT_CREATE, Permissions.PROJECT_READ, Permissions.ERP_PUSH,
-        Permissions.AI_PROCESS
+        Permissions.AI_PROCESS, Permissions.ADMIN_READ, Permissions.ADMIN_WRITE
     ],
     "Merchandiser": [
         Permissions.DOCUMENT_READ, Permissions.DOCUMENT_CREATE,

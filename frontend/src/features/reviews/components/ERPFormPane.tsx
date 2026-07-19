@@ -1,6 +1,7 @@
+import React, { useState, useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { useReviewStore } from '../../../../stores/reviewStore';
-import { CheckCircle2, AlertTriangle, Info, Save } from 'lucide-react';
+import { useReviewStore } from '../../../stores/reviewStore';
+import { CheckCircle2, AlertTriangle, Save } from 'lucide-react';
 import { RequirePermission } from '../../auth/components/RequirePermission';
 
 interface MockFormValues {
@@ -18,7 +19,7 @@ export const ERPFormPane: React.FC = () => {
     const { activeField, setActiveField, setUnsavedChanges } = useReviewStore();
     const [isSaving, setIsSaving] = useState(false);
     
-    const { control, handleSubmit, watch, formState: { isDirty } } = useForm<MockFormValues>({
+    const { control, watch, formState: { isDirty } } = useForm<MockFormValues>({
         defaultValues: {
             buyer_name: 'Acme Corporation',
             style_code: 'FW26-001',
@@ -36,17 +37,21 @@ export const ERPFormPane: React.FC = () => {
 
     // Simulated Auto-Save Debounce
     useEffect(() => {
+        let timer: ReturnType<typeof setTimeout> | null = null;
         const subscription = watch((value, { name, type }) => {
             if (type === 'change') {
                 setIsSaving(true);
-                const timer = setTimeout(() => {
+                if (timer) clearTimeout(timer);
+                timer = setTimeout(() => {
                     console.log('Auto-saved draft field:', name, value);
                     setIsSaving(false);
                 }, 800);
-                return () => clearTimeout(timer);
             }
         });
-        return () => subscription.unsubscribe();
+        return () => {
+            subscription.unsubscribe();
+            if (timer) clearTimeout(timer);
+        };
     }, [watch]);
 
     const handleFocus = (fieldName: string) => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useReviewStore } from '../../../../stores/reviewStore';
+import { useReviewStore } from '../../../stores/reviewStore';
 import { ShieldAlert, History, MessageSquare, Bot } from 'lucide-react';
 
 export const ContextPane: React.FC = () => {

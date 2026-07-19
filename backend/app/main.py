@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents, monitoring
+from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics
 from app.infrastructure.monitoring.telemetry import setup_telemetry
 from app.infrastructure.monitoring.metrics import PrometheusMiddleware
 
@@ -84,6 +84,9 @@ app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Aut
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
 app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
 app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}", tags=["Monitoring"])
+app.include_router(learning.router, prefix=f"{settings.API_V1_STR}", tags=["Continuous Learning Engine"])
+app.include_router(admin.router, prefix=f"{settings.API_V1_STR}", tags=["Enterprise Administration"])
+app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}", tags=["Analytics & BI Engine"])
 
 
 @app.get("/health", tags=["Monitoring"])
