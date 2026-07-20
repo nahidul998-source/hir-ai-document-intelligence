@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit
+from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit, ai_providers
 from app.infrastructure.monitoring.telemetry import setup_telemetry
 from app.infrastructure.monitoring.metrics import PrometheusMiddleware
 from app.core.security_headers import setup_security_headers
@@ -43,6 +43,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+from app.api.routers.ai_providers import ai_manager
+from app.application.services.ai.health_monitor import AIProviderHealthMonitor
+
+health_monitor = AIProviderHealthMonitor(ai_manager, interval_seconds=60)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup actions
@@ -52,11 +57,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not connect to RabbitMQ broker on startup: {e}. Services running in degraded mode.")
 
+    # Start AI Provider Health Monitor
+    await health_monitor.start()
+
     yield
 
     # Shutdown actions
     logger.info("Closing RabbitMQ Event Publisher connection...")
     await _event_publisher.close()
+    
+    # Stop AI Provider Health Monitor
+    await health_monitor.stop()
 
 
 app = FastAPI(
@@ -96,6 +107,7 @@ app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}", tags=["Ana
 app.include_router(rag.router, prefix=f"{settings.API_V1_STR}", tags=["RAG & Knowledge Base"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["Health & Readiness"])
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}", tags=["Security & Audit"])
+app.include_router(ai_providers.router)
 
 @app.get("/health", tags=["Monitoring"])
 async def health_check():

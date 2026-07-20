@@ -5,7 +5,9 @@ import {
   Tenant,
   FeatureFlag,
   SystemConfig,
-  ApiKeyData
+  ApiKeyData,
+  AIProvider,
+  AIRoutingRule
 } from '../../../api/adminApi';
 import {
   Shield,
@@ -18,11 +20,19 @@ import {
   RefreshCw,
   HardDrive,
   Trash2,
-  Cpu
+  Cpu,
+  Server,
+  ArrowUp,
+  ArrowDown,
+  Activity,
+  Layers,
+  CheckCircle,
+  XCircle,
+  Clock
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const [activeSubTab, setActiveSubTab] = useState<'users' | 'tenants' | 'flags' | 'keys' | 'ops'>('users');
+  const [activeSubTab, setActiveSubTab] = useState<'users' | 'tenants' | 'flags' | 'keys' | 'ops' | 'providers'>('users');
   const [loading, setLoading] = useState(true);
 
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -30,6 +40,10 @@ export const AdminDashboard: React.FC = () => {
   const [flags, setFlags] = useState<FeatureFlag[]>([]);
   const [configs, setConfigs] = useState<SystemConfig[]>([]);
   const [apiKeys, setApiKeys] = useState<ApiKeyData[]>([]);
+  
+  const [aiProviders, setAiProviders] = useState<AIProvider[]>([]);
+  const [aiPriority, setAiPriority] = useState<string[]>([]);
+  const [aiRoutingRules, setAiRoutingRules] = useState<AIRoutingRule[]>([]);
 
   // New Tenant Modal State
   const [tenantName, setTenantName] = useState('');
@@ -42,12 +56,14 @@ export const AdminDashboard: React.FC = () => {
   const loadAdminData = async () => {
     setLoading(true);
     try {
-      const [uRes, tRes, fRes, cfgRes, kRes] = await Promise.all([
+      const [uRes, tRes, fRes, cfgRes, kRes, aiRes, routeRes] = await Promise.all([
         adminApi.getUsers(),
         adminApi.getTenants(),
         adminApi.getFeatureFlags(),
         adminApi.getSystemConfigs(),
-        adminApi.getApiKeys()
+        adminApi.getApiKeys(),
+        adminApi.getAIProviders(),
+        adminApi.getAIRoutingRules()
       ]);
 
       setUsers(uRes || []);
@@ -55,6 +71,12 @@ export const AdminDashboard: React.FC = () => {
       setFlags(fRes || []);
       setConfigs(cfgRes || []);
       setApiKeys(kRes || []);
+      setAiRoutingRules(routeRes || []);
+      
+      if (aiRes) {
+        setAiProviders(aiRes.providers || []);
+        setAiPriority(aiRes.priority || []);
+      }
     } catch (err) {
       console.error('Failed to load admin portal data', err);
     } finally {
@@ -115,6 +137,67 @@ export const AdminDashboard: React.FC = () => {
       await loadAdminData();
     } catch (err) {
       console.error('Backup trigger failed', err);
+    }
+  };
+
+  const handleTestProvider = async (key: string) => {
+    try {
+      const res = await adminApi.testAIProvider(key);
+      alert(`Provider ${key} connection is ${res.healthy ? 'Successful (Healthy)' : 'Failed (Unhealthy)'}`);
+      await loadAdminData();
+    } catch (err) {
+      console.error('Failed to test provider', err);
+      alert('Error connecting to provider.');
+    }
+  };
+
+  const handleToggleProvider = async (key: string) => {
+    try {
+      await adminApi.toggleAIProvider(key);
+      await loadAdminData();
+    } catch (err) {
+      console.error('Failed to toggle provider', err);
+    }
+  };
+
+  const handleMovePriority = async (key: string, direction: 'up' | 'down') => {
+    const currentIndex = aiPriority.indexOf(key);
+    if (currentIndex === -1) return;
+    
+    const newPriority = [...aiPriority];
+    if (direction === 'up' && currentIndex > 0) {
+      [newPriority[currentIndex - 1], newPriority[currentIndex]] = [newPriority[currentIndex], newPriority[currentIndex - 1]];
+    } else if (direction === 'down' && currentIndex < newPriority.length - 1) {
+      [newPriority[currentIndex + 1], newPriority[currentIndex]] = [newPriority[currentIndex], newPriority[currentIndex + 1]];
+    } else {
+      return;
+    }
+    
+    try {
+      await adminApi.updateAIProviderPriority(newPriority);
+      await loadAdminData();
+    } catch (err) {
+      console.error('Failed to update priority', err);
+    }
+  };
+
+  const handleReloadModels = async (key: string) => {
+    try {
+      const res = await adminApi.getAIProviderModels(key);
+      console.log('Available models:', res);
+      alert(`Models fetched successfully. Check console for details. Data: ${JSON.stringify(res).substring(0, 100)}...`);
+    } catch (err) {
+      console.error('Failed to reload models', err);
+      alert('Error fetching models from provider.');
+    }
+  };
+
+  const handleUpdateRoutingRule = async (docType: string, keys: string[]) => {
+    try {
+      await adminApi.updateAIRoutingRule(docType, keys);
+      await loadAdminData();
+    } catch (err) {
+      console.error('Failed to update routing rule', err);
     }
   };
 
@@ -181,6 +264,14 @@ export const AdminDashboard: React.FC = () => {
           }`}
         >
           <Key size={16} /> API Key Management ({apiKeys.length})
+        </button>
+        <button
+          onClick={() => setActiveSubTab('providers')}
+          className={`pb-3 px-1 transition-colors border-b-2 flex items-center gap-2 ${
+            activeSubTab === 'providers' ? 'border-violet-500 text-violet-400' : 'border-transparent text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Server size={16} /> AI Providers
         </button>
         <button
           onClick={() => setActiveSubTab('ops')}
@@ -388,7 +479,163 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Tab 5: Ops & Backups */}
+      {/* Tab 5: AI Providers */}
+      {activeSubTab === 'providers' && (
+        <div className="space-y-6">
+          {/* Section 1: AI Providers & Telemetry */}
+          <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold text-white">AI Models & Telemetry Metrics</h3>
+              <button
+                onClick={loadAdminData}
+                className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded border border-slate-700 flex items-center gap-1.5 transition-colors"
+              >
+                <RefreshCw size={12} /> Refresh Metrics
+              </button>
+            </div>
+            
+            <div className="grid gap-4">
+              {aiProviders.map((p) => {
+                const isHealthy = p.status === 'Healthy';
+                return (
+                  <div key={p.key} className="p-4 bg-slate-950 rounded-lg border border-slate-800 space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between pb-3 border-b border-slate-900">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold text-slate-100 text-sm">{p.name}</span>
+                          {p.enabled ? (
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${isHealthy ? 'bg-emerald-500/20 text-emerald-300' : p.status === 'Error' ? 'bg-red-500/20 text-red-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                              {p.status}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold">Disabled</span>
+                          )}
+                          <span className="text-xs text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full border border-slate-800 font-mono">Priority: {p.priority_index}</span>
+                        </div>
+                        <div className="text-xs text-slate-500 font-mono">
+                          Endpoint: {p.api_url} | Model: {p.model_name}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button onClick={() => handleMovePriority(p.key, 'up')} disabled={p.priority_index <= 0} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 disabled:opacity-30 rounded border border-slate-800 transition-colors" title="Move Priority Up">
+                          <ArrowUp size={14} />
+                        </button>
+                        <button onClick={() => handleMovePriority(p.key, 'down')} disabled={p.priority_index === -1 || p.priority_index >= aiPriority.length - 1} className="p-1.5 bg-slate-900 hover:bg-slate-800 text-slate-400 disabled:opacity-30 rounded border border-slate-800 transition-colors" title="Move Priority Down">
+                          <ArrowDown size={14} />
+                        </button>
+                        
+                        <button onClick={() => handleTestProvider(p.key)} className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded transition-colors">
+                          Test Connection
+                        </button>
+                        
+                        <button onClick={() => handleReloadModels(p.key)} className="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded transition-colors">
+                          Reload Models
+                        </button>
+                        
+                        <button 
+                          onClick={() => handleToggleProvider(p.key)}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded border transition-colors ${p.enabled ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/30' : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'}`}
+                        >
+                          {p.enabled ? 'Disable' : 'Enable'}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs">
+                      {/* Telemetry Metrics */}
+                      <div className="space-y-1.5 p-3 bg-slate-900/40 rounded border border-slate-900">
+                        <div className="font-semibold text-slate-300 flex items-center gap-1.5"><Activity size={14} className="text-violet-400"/> Operational Telemetry</div>
+                        <div className="flex justify-between text-slate-400"><span>Avg Latency:</span> <span className="font-mono text-slate-200">{p.latency ? `${p.latency.toFixed(0)}ms` : '--'}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>P95 Latency:</span> <span className="font-mono text-slate-200">{p.p95_latency ? `${p.p95_latency.toFixed(0)}ms` : '--'}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Success Rate:</span> <span className="font-mono text-emerald-400 font-bold">{p.success_rate ? `${p.success_rate.toFixed(1)}%` : '100%'}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Requests:</span> <span className="font-mono text-slate-200">{p.requests}</span></div>
+                      </div>
+
+                      {/* Exceptions & Retries */}
+                      <div className="space-y-1.5 p-3 bg-slate-900/40 rounded border border-slate-900">
+                        <div className="font-semibold text-slate-300 flex items-center gap-1.5"><Clock size={14} className="text-violet-400"/> Fallbacks & Failures</div>
+                        <div className="flex justify-between text-slate-400"><span>Retry Count:</span> <span className="font-mono text-slate-200">{p.retry_count}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Fallback Count:</span> <span className="font-mono text-slate-200">{p.fallback_count}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Timeout Count:</span> <span className="font-mono text-slate-200">{p.timeout_count}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Uptime Check:</span> <span className="font-mono text-slate-300">{(p.last_health_check) ? new Date(p.last_health_check).toLocaleTimeString() : 'Never'}</span></div>
+                      </div>
+
+                      {/* Model Capabilities */}
+                      <div className="space-y-1.5 p-3 bg-slate-900/40 rounded border border-slate-900">
+                        <div className="font-semibold text-slate-300 flex items-center gap-1.5"><Layers size={14} className="text-violet-400"/> Capabilities</div>
+                        <div className="flex justify-between text-slate-400"><span>Context Length:</span> <span className="font-mono text-slate-200">{p.capabilities?.context_length || '4096'} tokens</span></div>
+                        <div className="flex justify-between text-slate-400"><span>JSON Extraction:</span> <span className="font-mono">{p.capabilities?.json_mode ? <span className="text-emerald-400">Yes</span> : <span className="text-slate-500">No</span>}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Vision Support:</span> <span className="font-mono">{p.capabilities?.vision ? <span className="text-emerald-400">Yes</span> : <span className="text-slate-500">No</span>}</span></div>
+                        <div className="flex justify-between text-slate-400"><span>Streaming:</span> <span className="font-mono">{p.capabilities?.streaming ? <span className="text-emerald-400">Yes</span> : <span className="text-slate-500">No</span>}</span></div>
+                      </div>
+                    </div>
+
+                    {p.last_error && (
+                      <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded text-[11px] font-mono text-red-400">
+                        <strong>Last Error ({new Date(p.last_error.timestamp).toLocaleTimeString()}):</strong> {p.last_error.message}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Document Type Routing Rules */}
+          <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-4">
+            <h3 className="text-base font-semibold text-white">Document-Type Orchestrator Routing</h3>
+            <p className="text-xs text-slate-400">
+              Configure the prioritized provider fallback list for each processed document classification.
+            </p>
+            <div className="grid gap-4">
+              {aiRoutingRules.map((rule) => {
+                return (
+                  <div key={rule.document_type} className="p-4 bg-slate-950 rounded-lg border border-slate-800 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-200 capitalize text-sm">{rule.document_type.replace('_', ' ')}</div>
+                      <div className="text-[11px] text-slate-500 mt-1 flex flex-wrap gap-1">
+                        Priority Order: 
+                        {rule.provider_keys.length > 0 ? rule.provider_keys.map((k, idx) => (
+                          <span key={k} className="px-1.5 py-0.5 bg-slate-900 text-slate-300 rounded font-mono text-[10px] border border-slate-800">
+                            {idx + 1}. {k}
+                          </span>
+                        )) : <span className="text-red-400 italic">None (Will fail execution)</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1">
+                      {aiProviders.map((p) => {
+                        const isSelected = rule.provider_keys.includes(p.key);
+                        return (
+                          <button
+                            key={p.key}
+                            onClick={() => {
+                              const newKeys = isSelected
+                                ? rule.provider_keys.filter((k) => k !== p.key)
+                                : [...rule.provider_keys, p.key];
+                              handleUpdateRoutingRule(rule.document_type, newKeys);
+                            }}
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                              isSelected
+                                ? 'bg-violet-600/20 text-violet-300 border-violet-500/30'
+                                : 'bg-slate-900 text-slate-500 border-slate-800 hover:text-slate-300'
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 6: Ops & Backups */}
       {activeSubTab === 'ops' && (
         <div className="bg-slate-900/50 p-6 rounded-xl border border-slate-800 space-y-6">
           <div className="flex items-center justify-between border-b border-slate-800 pb-4">

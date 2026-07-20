@@ -1,5 +1,14 @@
 name: "Tech Pack Extractor"
-version: "1.0"
+version: "1.0.0"
+author: "Design & Quality Team"
+approval_status: "approved"
+supported_document_types:
+  - "tech_pack"
+compatible_model_families:
+  - "gemini"
+  - "gpt-4"
+created_date: "2026-07-20"
+modified_date: "2026-07-20"
 description: "Prompt for extracting garment tech packs."
 prompt_text: >
   You are an expert Garment Merchandiser AI.

@@ -39,3 +39,22 @@ class PromptRegistry:
             return {}
             
         return template.get("output_schema", {})
+
+    def get_metadata(self, doc_type: DocumentType) -> dict:
+        template = self.templates.get(doc_type.value)
+        if not template:
+            template = self.templates.get(DocumentType.GENERIC.value)
+        if not template:
+            return {}
+        return {
+            "version": template.get("version", "1.0.0"),
+            "author": template.get("author", "System"),
+            "approval_status": template.get("approval_status", "approved"),
+            "supported_document_types": template.get("supported_document_types", [doc_type.value]),
+            "compatible_model_families": template.get("compatible_model_families", []),
+            "created_date": template.get("created_date", "2026-07-20"),
+            "modified_date": template.get("modified_date", "2026-07-20")
+        }
+
+    def get_version(self, doc_type: DocumentType) -> str:
+        return self.get_metadata(doc_type).get("version", "1.0.0")

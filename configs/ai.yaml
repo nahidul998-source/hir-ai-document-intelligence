@@ -4,10 +4,11 @@ providers:
   local_qwen:
     name: "local_qwen"
     enabled: true
-    api_url: "http://localhost:8000/v1"
-    api_key: "dummy-key-for-local"
-    model_name: "Qwen/Qwen2.5-VL-7B-Instruct"
-    timeout: 30
+    api_url: "http://localhost:11434/v1"
+    api_key: "ollama"
+    model_name: "qwen2.5:1.5b"
+    timeout: 60
+    streaming: false
 
   github:
     name: "github"

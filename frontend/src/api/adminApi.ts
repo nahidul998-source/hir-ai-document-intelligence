@@ -57,7 +57,77 @@ export interface ApiKeyData {
   raw_api_key?: string;
 }
 
+export interface AIProvider {
+  key: string;
+  name: string;
+  enabled: boolean;
+  api_url: string;
+  model_name: string;
+  priority_index: number;
+  status: string;
+  latency: number;
+  p95_latency: number;
+  requests: number;
+  errors: number;
+  success_rate: number;
+  failure_rate: number;
+  retry_count: number;
+  fallback_count: number;
+  timeout_count: number;
+  last_successful_request: string | null;
+  last_error: any;
+  last_health_check: string | null;
+  capabilities: {
+    context_length: number;
+    json_mode: boolean;
+    vision: boolean;
+    streaming: boolean;
+  };
+}
+
+export interface AIRoutingRule {
+  document_type: string;
+  provider_keys: string[];
+}
+
 export const adminApi = {
+  getAIProviders: async () => {
+    const res = await apiClient.get<{ providers: AIProvider[], priority: string[] }>('/ai-providers');
+    return res.data;
+  },
+  
+  testAIProvider: async (key: string) => {
+    const res = await apiClient.post<{ healthy: boolean }>(`/ai-providers/${key}/test`);
+    return res.data;
+  },
+  
+  toggleAIProvider: async (key: string) => {
+    const res = await apiClient.post<{ status: string, enabled: boolean }>(`/ai-providers/${key}/toggle`);
+    return res.data;
+  },
+  
+  updateAIProviderPriority: async (priority: string[]) => {
+    const res = await apiClient.post<{ status: string, priority: string[] }>('/ai-providers/priority', { priority });
+    return res.data;
+  },
+  
+  getAIProviderModels: async (key: string) => {
+    const res = await apiClient.get<any>(`/ai-providers/${key}/models`);
+    return res.data;
+  },
+
+  getAIRoutingRules: async () => {
+    const res = await apiClient.get<AIRoutingRule[]>('/ai-providers/routing');
+    return res.data;
+  },
+
+  updateAIRoutingRule: async (documentType: string, providerKeys: string[]) => {
+    const res = await apiClient.post<{ status: string }>('/ai-providers/routing', {
+      document_type: documentType,
+      provider_keys: providerKeys
+    });
+    return res.data;
+  },
   getUsers: async () => {
     const res = await apiClient.get<AdminUser[]>('/admin/users');
     return res.data;
