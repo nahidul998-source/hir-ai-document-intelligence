@@ -61,6 +61,15 @@ class Settings(BaseSettings):
     GITHUB_TOKEN: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
 
+    # Enterprise Secrets (Vault)
+    VAULT_ADDR: Optional[str] = None
+    VAULT_TOKEN: Optional[str] = None
+    USE_MOCK_SECRETS: bool = True
+    
+    # Observability
+    OTEL_EXPORTER_OTLP_ENDPOINT: Optional[str] = "http://localhost:4317"
+    ENABLE_TRACING: bool = True
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

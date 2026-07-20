@@ -6,9 +6,11 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics
+from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit
 from app.infrastructure.monitoring.telemetry import setup_telemetry
 from app.infrastructure.monitoring.metrics import PrometheusMiddleware
+from app.core.security_headers import setup_security_headers
+from app.core.observability import setup_observability
 
 # Configure structured JSON logging for the application
 class JSONFormatter(logging.Formatter):
@@ -66,6 +68,10 @@ app = FastAPI(
 
 # Initialize OpenTelemetry telemetry setup
 setup_telemetry(app)
+setup_observability(app)
+
+# Inject security headers middleware
+setup_security_headers(app)
 
 # Inject Prometheus metrics collector middleware
 app.add_middleware(PrometheusMiddleware)
@@ -87,7 +93,9 @@ app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}", tags=["Mo
 app.include_router(learning.router, prefix=f"{settings.API_V1_STR}", tags=["Continuous Learning Engine"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}", tags=["Enterprise Administration"])
 app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}", tags=["Analytics & BI Engine"])
-
+app.include_router(rag.router, prefix=f"{settings.API_V1_STR}", tags=["RAG & Knowledge Base"])
+app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["Health & Readiness"])
+app.include_router(audit.router, prefix=f"{settings.API_V1_STR}", tags=["Security & Audit"])
 
 @app.get("/health", tags=["Monitoring"])
 async def health_check():
