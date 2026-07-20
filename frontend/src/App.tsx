@@ -9,6 +9,7 @@ import { AuditDashboard } from './features/monitoring/components/AuditDashboard'
 import { LearningDashboard } from './features/learning/components/LearningDashboard';
 import { AdminDashboard } from './features/admin/components/AdminDashboard';
 import { AnalyticsDashboard } from './features/analytics/components/AnalyticsDashboard';
+import { ReviewWorkspace } from './features/reviews/components/ReviewWorkspace';
 import { apiClient } from './lib/api-client';
 
 const App: React.FC = () => {
@@ -16,6 +17,7 @@ const App: React.FC = () => {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [documents, setDocuments] = useState([]);
   const [currentTab, setCurrentTab] = useState<'workspace' | 'health' | 'audit' | 'learning' | 'admin' | 'analytics'>('workspace');
+  const [activeReviewDocId, setActiveReviewDocId] = useState<string | null>(null);
 
   const fetchDocuments = async () => {
     if (!selectedProjectId) return;
@@ -51,7 +53,10 @@ const App: React.FC = () => {
           
           <nav className="flex items-center gap-3 ml-4">
             <button
-              onClick={() => setCurrentTab('workspace')}
+              onClick={() => {
+                setCurrentTab('workspace');
+                setActiveReviewDocId(null);
+              }}
               className={`px-3 py-1.5 text-xs font-semibold rounded transition-colors ${
                 currentTab === 'workspace' ? 'bg-violet-600 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
               }`}
@@ -116,24 +121,48 @@ const App: React.FC = () => {
             <aside className="w-80 bg-slate-900/50 border-r border-slate-800 p-6 overflow-y-auto">
               <ProjectList
                 selectedProjectId={selectedProjectId}
-                onSelectProject={setSelectedProjectId}
+                onSelectProject={(id) => {
+                  setSelectedProjectId(id);
+                  setActiveReviewDocId(null);
+                }}
               />
             </aside>
 
-            {/* Dashboard Area */}
-            <main className="flex-1 p-8 overflow-y-auto space-y-6">
-              {selectedProjectId ? (
-                <>
+            {/* Dashboard Area / Review Workspace */}
+            <main className="flex-1 flex flex-col overflow-hidden">
+              {activeReviewDocId ? (
+                <div className="flex flex-col h-full bg-slate-950 overflow-hidden">
+                  <div className="bg-slate-900 px-6 py-3 border-b border-slate-800 flex items-center justify-between shrink-0">
+                    <span className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full"></span>
+                      Reviewing Document ID: <code className="font-mono text-violet-400">{activeReviewDocId}</code>
+                    </span>
+                    <button
+                      onClick={() => setActiveReviewDocId(null)}
+                      className="px-3 py-1 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded transition-colors"
+                    >
+                      ← Back to Queue
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <ReviewWorkspace docId={activeReviewDocId} />
+                  </div>
+                </div>
+              ) : selectedProjectId ? (
+                <div className="flex-1 p-8 overflow-y-auto space-y-6">
                   <div className="grid grid-cols-1 gap-6">
                     <DocumentUpload
                       projectId={selectedProjectId}
                       onUploadSuccess={fetchDocuments}
                     />
-                    <DocumentList documents={documents} />
+                    <DocumentList 
+                      documents={documents} 
+                      onReviewDocument={setActiveReviewDocId}
+                    />
                   </div>
-                </>
+                </div>
               ) : (
-                <div className="flex flex-col items-center justify-center min-h-[50vh] text-slate-500">
+                <div className="flex-1 flex flex-col items-center justify-center text-slate-500">
                   <p className="text-sm italic">Select or create a project to manage documents.</p>
                 </div>
               )}

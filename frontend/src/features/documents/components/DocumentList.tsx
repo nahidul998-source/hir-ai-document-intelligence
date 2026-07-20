@@ -11,9 +11,10 @@ interface Document {
 
 interface DocumentListProps {
   documents: Document[];
+  onReviewDocument?: (docId: string) => void;
 }
 
-export const DocumentList: React.FC<DocumentListProps> = ({ documents }) => {
+export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewDocument }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
@@ -38,12 +39,13 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents }) => {
               <th className="px-6 py-3">Version</th>
               <th className="px-6 py-3">Status</th>
               <th className="px-6 py-3">Uploaded At</th>
+              <th className="px-6 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/50">
             {documents.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-slate-500 italic">
+                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 italic">
                   No documents uploaded to this project yet.
                 </td>
               </tr>
@@ -60,6 +62,14 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents }) => {
                   </td>
                   <td className="px-6 py-4 text-slate-400">
                     {new Date(doc.created_at).toLocaleString()}
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <button
+                      onClick={() => onReviewDocument?.(doc.id)}
+                      className="px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded transition-colors"
+                    >
+                      Review
+                    </button>
                   </td>
                 </tr>
               ))

@@ -3,7 +3,11 @@ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'reac
 import { PDFViewerPane } from './PDFViewerPane';
 import { ERPFormPane } from './ERPFormPane';
 import { ContextPane } from './ContextPane';
-export const ReviewWorkspace: React.FC = () => {
+interface ReviewWorkspaceProps {
+    docId: string;
+}
+
+export const ReviewWorkspace: React.FC<ReviewWorkspaceProps> = ({ docId }) => {
     // We bind hotkeys globally at the workspace level (or app level)
     // using a dedicated hook or event listeners.
 
@@ -29,7 +33,7 @@ export const ReviewWorkspace: React.FC = () => {
             <PanelGroup orientation="horizontal" id="hir-workspace-layout">
                 {/* Left Pane - PDF Viewer */}
                 <Panel defaultSize={35} minSize={20} className="bg-white border-r border-slate-200 flex flex-col shadow-sm z-10">
-                    <PDFViewerPane />
+                    <PDFViewerPane docId={docId} />
                 </Panel>
                 
                 <PanelResizeHandle className="w-1.5 bg-slate-200 hover:bg-indigo-400 transition-colors cursor-col-resize active:bg-indigo-600" />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -6,12 +6,55 @@ import { useReviewStore, HighlightBox } from '../../../stores/reviewStore';
 import { ZoomIn, ZoomOut, Maximize, RotateCw } from 'lucide-react';
 
 // Setup PDF worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.4.296/pdf.worker.min.mjs';
 
-export const PDFViewerPane: React.FC = () => {
+interface PDFViewerPaneProps {
+    docId: string;
+}
+
+export const PDFViewerPane: React.FC<PDFViewerPaneProps> = ({ docId }) => {
     const { activeField, zoomLevel, rotation, setZoomLevel, setRotation, highlights } = useReviewStore();
     const [numPages, setNumPages] = useState<number | null>(null);
-    const [file] = useState<string | null>('/sample-techpack.pdf'); // Mock URL
+    const [file, setFile] = useState<string | null>(null);
+    const [isLoadingFile, setIsLoadingFile] = useState(true);
+    const [fileError, setFileError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let objectUrl: string | null = null;
+        const fetchFile = async () => {
+            setIsLoadingFile(true);
+            setFileError(null);
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`http://localhost:8002/api/v1/documents/download/${docId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to load document file from server');
+                }
+                const blob = await response.blob();
+                objectUrl = URL.createObjectURL(blob);
+                setFile(objectUrl);
+            } catch (err: any) {
+                console.error(err);
+                setFileError(err.message || 'Error loading PDF');
+            } finally {
+                setIsLoadingFile(false);
+            }
+        };
+
+        if (docId) {
+            fetchFile();
+        }
+
+        return () => {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+            }
+        };
+    }, [docId]);
 
     function onDocumentLoadSuccess({ numPages }: { numPages: number }) {
         setNumPages(numPages);
@@ -49,7 +92,16 @@ export const PDFViewerPane: React.FC = () => {
 
             {/* Viewer Canvas */}
             <div className="flex-1 overflow-auto relative p-4 custom-scrollbar bg-slate-200/50 flex justify-center">
-                {file ? (
+                {isLoadingFile ? (
+                    <div className="flex items-center justify-center h-full text-slate-400 m-auto">
+                        <span className="animate-pulse">Fetching PDF from storage...</span>
+                    </div>
+                ) : fileError ? (
+                    <div className="text-red-500 m-auto flex flex-col items-center gap-2">
+                        <span>Failed to load PDF file.</span>
+                        <span className="text-xs text-slate-500">{fileError}</span>
+                    </div>
+                ) : file ? (
                     <Document
                         file={file}
                         onLoadSuccess={onDocumentLoadSuccess}

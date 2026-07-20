@@ -31,3 +31,7 @@ htmlcov/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Logs & Local DBs
+*.log
+*.db
