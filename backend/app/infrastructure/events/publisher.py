@@ -1,5 +1,6 @@
 import json
 import logging
+import asyncio
 import aio_pika
 from app.core.config import settings
 
@@ -17,7 +18,7 @@ class RabbitMQEventPublisher:
     async def connect(self) -> None:
         """Establishes connection to RabbitMQ Broker."""
         try:
-            self.connection = await aio_pika.connect_robust(self.url)
+            self.connection = await asyncio.wait_for(aio_pika.connect(self.url, timeout=2.0), timeout=2.0)
             self.channel = await self.connection.channel()
             # Declare durable exchange for domain events
             await self.channel.declare_exchange("hir.events", aio_pika.ExchangeType.TOPIC, durable=True)
@@ -28,9 +29,9 @@ class RabbitMQEventPublisher:
             await queue.bind("hir.events", routing_key="document.uploaded")
             logger.info("Successfully connected to RabbitMQ broker and initialized exchanges/queues.")
         except Exception as e:
-            logger.error(f"Failed to connect to RabbitMQ broker: {e}")
-            # Raise so application knows queue is offline
-            raise
+            logger.warning(f"RabbitMQ connection skipped: {e}")
+            self.connection = None
+            self.channel = None
 
     async def close(self) -> None:
         if self.connection and not self.connection.is_closed:

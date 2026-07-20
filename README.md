@@ -161,9 +161,9 @@ GITHUB_TOKEN=your-github-token-here
 
 3. Run the development server:
    ```bash
-   uvicorn app.main:app --reload --port 8000
+   uvicorn app.main:app --reload --port 8002
    ```
-   *Swagger API Documentation will be available at `http://localhost:8000/docs`.*
+   *Swagger API Documentation will be available at `http://localhost:8002/docs`.*
 
 ---
 
