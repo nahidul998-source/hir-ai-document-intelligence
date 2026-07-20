@@ -5,14 +5,18 @@ Write-Host "==========================================================" -Foregro
 Write-Host "Starting HIR AI Document Intelligence Platform..." -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
 
+# Get the root directory of the project dynamically
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RootDir = Split-Path -Parent $ScriptDir
+
 # 1. Start Backend Server
 Write-Host "[1/2] Launching Backend Server on Port 8002..." -ForegroundColor Yellow
-$backendCommand = "cd backend; `$env:PYTHONPATH='.'; `$env:DATABASE_URL_OVERRIDE='sqlite+aiosqlite:///./hir_dev.db'; uv run python run_server.py"
+$backendCommand = "cd '$RootDir\backend'; `$env:PYTHONPATH='.'; `$env:DATABASE_URL_OVERRIDE='sqlite+aiosqlite:///./hir_dev.db'; uv run python run_server.py"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $backendCommand
 
 # 2. Start Frontend Dev Server
 Write-Host "[2/2] Launching Frontend Development Server on Port 5173..." -ForegroundColor Yellow
-$frontendCommand = "cd frontend; npm run dev"
+$frontendCommand = "cd '$RootDir\frontend'; npm run dev"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", $frontendCommand
 
 # 3. Complete
