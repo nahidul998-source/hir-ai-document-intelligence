@@ -1,11 +1,91 @@
 import pytest
 import asyncio
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from app.main import app
+
+from uuid import uuid4
+from unittest.mock import AsyncMock, MagicMock
+from datetime import datetime
+from app.api.deps import get_current_user, get_document_service
+from app.infrastructure.database.models import User
+
+from app.schemas.document import DocumentResponse
+
+mock_user = User(id=uuid4(), email="test@example.com", is_active=True)
+
+test_doc_id = uuid4()
+test_proj_id = uuid4()
+
+mock_doc = DocumentResponse(
+    id=test_doc_id,
+    project_id=test_proj_id,
+    filename="tech_pack.pdf",
+    file_type="application/pdf",
+    minio_key="test_key",
+    current_version=1,
+    status="uploaded",
+    confidence_score=0.95,
+    uploader_id=mock_user.id,
+    created_at=datetime.now(),
+    updated_at=datetime.now()
+)
+
+mock_doc_service = MagicMock()
+mock_doc_service.upload_document = AsyncMock(return_value=mock_doc)
+
+from app.database.session import get_db
+from app.infrastructure.database.models import DocumentVersion
+from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField
+
+mock_version = MagicMock(id=uuid4(), document_id=test_doc_id, version_number=1, minio_key="test_key")
+
+db_sessions = {}
+db_fields = {}
+
+async def mock_get_db():
+    mock_session = AsyncMock()
+    
+    def fake_add(obj):
+        if not getattr(obj, "id", None):
+            setattr(obj, "id", uuid4())
+        if isinstance(obj, ReviewSession):
+            db_sessions[obj.document_id] = obj
+            db_sessions[obj.id] = obj
+        elif isinstance(obj, ReviewField):
+            db_fields[(obj.session_id, obj.field_name)] = obj
+
+    def fake_execute(stmt):
+        mock_res = MagicMock()
+        stmt_str = str(stmt).lower()
+        if "document_versions" in stmt_str:
+            mock_res.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=mock_version)))
+        elif "review_sessions" in stmt_str:
+            sessions = [v for v in db_sessions.values() if isinstance(v, ReviewSession)]
+            mock_res.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=sessions[0] if sessions else None)))
+        elif "review_fields" in stmt_str:
+            fields = [v for v in db_fields.values() if isinstance(v, ReviewField)]
+            mock_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=fields), first=MagicMock(return_value=fields[0] if fields else None)))
+        else:
+            mock_res.scalars = MagicMock(return_value=MagicMock(first=MagicMock(return_value=None), all=MagicMock(return_value=[])))
+        return mock_res
+
+    mock_session.add = fake_add
+    mock_session.execute = AsyncMock(side_effect=fake_execute)
+    yield mock_session
+
+@pytest.fixture(autouse=True)
+def override_deps():
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+    app.dependency_overrides[get_document_service] = lambda: mock_doc_service
+    app.dependency_overrides[get_db] = mock_get_db
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
+    app.dependency_overrides.pop(get_document_service, None)
+    app.dependency_overrides.pop(get_db, None)
 
 @pytest.mark.asyncio
 async def test_end_to_end_pipeline():
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         # 1. Upload Document
         upload_resp = await ac.post(
             "/api/v1/documents/upload/123e4567-e89b-12d3-a456-426614174000",

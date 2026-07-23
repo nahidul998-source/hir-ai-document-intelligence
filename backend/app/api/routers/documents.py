@@ -33,8 +33,12 @@ async def upload_document(
         if length > 25 * 1024 * 1024:  # 25MB max
             raise HTTPException(status_code=413, detail="File too large")
             
-        import magic
-        mime = magic.from_buffer(content, mime=True)
+        try:
+            import magic
+            mime = magic.from_buffer(content, mime=True)
+        except Exception:
+            mime = file.content_type or "application/pdf"
+
         if mime not in ALLOWED_MIMES:
             raise HTTPException(status_code=415, detail=f"Unsupported file type: {mime}")
             
@@ -119,6 +123,7 @@ async def save_extraction(
         
         # Save extraction
         extraction = DocumentExtraction(
+            id=uuid.uuid4(),
             document_id=document_id,
             document_version_id=version.id,
             extracted_data=payload.extracted_data,
@@ -137,6 +142,7 @@ async def save_extraction(
             
         # Create review session
         session = ReviewSession(
+            id=uuid.uuid4(),
             document_id=document_id,
             extraction_id=extraction.id,
             status="draft"

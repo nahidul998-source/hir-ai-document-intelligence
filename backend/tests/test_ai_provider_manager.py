@@ -2,20 +2,48 @@ import os
 import pytest
 from unittest.mock import AsyncMock, patch
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
+from app.infrastructure.adapters.providers.openai_provider import LocalOpenAIProvider
 
 @pytest.fixture
 def manager():
-    # Construct relative path to the existing config file
     test_dir = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(test_dir, "../../configs/ai.yaml")
     m = AIProviderManager(config_path)
-    import asyncio
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-    loop.run_until_complete(m.initialize())
+    import yaml
+    if os.path.exists(config_path):
+        with open(config_path, "r") as f:
+            data = yaml.safe_load(f)
+        m.priority = data.get("priority", [])
+        m.providers = {}
+        m.metrics = {}
+        for k in m.priority:
+            p = data["providers"][k]
+            m.providers[k] = LocalOpenAIProvider(
+                name=k,
+                enabled=p.get("enabled", True),
+                api_url=p["api_url"],
+                api_key=p.get("api_key", ""),
+                model_name=p["model_name"]
+            )
+            m.metrics[k] = {
+                "requests": 0,
+                "errors": 0,
+                "latencies": [],
+                "latency": 0.0,
+                "p95_latency": 0.0,
+                "success_rate": 100.0,
+                "failure_rate": 0.0,
+                "retry_count": 0,
+                "fallback_count": 0,
+                "timeout_count": 0,
+                "last_successful_request": None,
+                "last_error": None,
+                "last_health_check": None,
+                "status": "Unknown",
+                "uptime_pings": 0,
+                "uptime_successes": 0
+            }
+        m._initialized = True
     return m
 
 def set_provider_health(manager, key: str, healthy: bool):

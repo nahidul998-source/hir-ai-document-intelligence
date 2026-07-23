@@ -1,4 +1,3 @@
-import React from 'react';
 import { getWidget } from './WidgetRegistry';
 
 export const SchemaRenderer = ({ schema }: { schema: any }) => {

@@ -21,13 +21,14 @@ from app.domain.services.validation.pipeline import ValidationPipeline
 logger = logging.getLogger(__name__)
 
 class DocumentProcessor:
-    def __init__(self, ai_provider_manager: AIProviderManager):
+    def __init__(self, ai_provider_manager: AIProviderManager, db: Any = None):
         self.classifier = DocumentClassifier()
         self.registry = PromptRegistry()
         self.confidence_engine = ConfidenceEngine()
         self.validator = JSONValidator()
         self.ai_provider = ai_provider_manager
         self.orchestrator = AIOrchestrator(ai_provider_manager)
+        self.validation_pipeline = ValidationPipeline(db)
         
     async def extract_text_and_layout(self, filename: str, file_bytes: bytes) -> Dict[str, Any]:
         """Phase 2: Hybrid OCR Engine - Extracts text, layout, and tables."""
@@ -176,7 +177,7 @@ class DocumentProcessor:
         confidence_metadata = self.confidence_engine.evaluate(
             extracted_data=enterprise_validation_result["validated_data"],
             ocr_text=extracted_text,
-            layout_blocks=ocr_res.get("layout_blocks", []),
+            layout_blocks=[],
             provider=metrics.provider
         )
         
@@ -191,3 +192,8 @@ class DocumentProcessor:
             "is_pydantic_valid": is_pydantic_valid,
             "is_business_valid": enterprise_validation_result["is_valid"]
         }
+
+    async def process_document(self, filename: str, first_page_text: str = "", db: Any = None) -> Dict[str, Any]:
+        doc_type_dict = await self.classifier.classify(filename, first_page_text)
+        doc_type = doc_type_dict.get("document_type", "generic")
+        return await self.extract_data(filename, first_page_text, doc_type, db)

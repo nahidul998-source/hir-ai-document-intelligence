@@ -11,7 +11,7 @@ export const ERPTable = ({ fieldSchema }: { fieldSchema: any }) => {
     const { control, register } = useFormContext();
     const { name, ui, items } = fieldSchema;
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append } = useFieldArray({
         control,
         name: name
     });

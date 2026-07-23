@@ -26,8 +26,6 @@ import {
   ArrowDown,
   Activity,
   Layers,
-  CheckCircle,
-  XCircle,
   Clock
 } from 'lucide-react';
 

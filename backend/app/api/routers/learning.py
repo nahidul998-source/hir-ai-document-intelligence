@@ -135,7 +135,7 @@ async def list_datasets(
 @router.get("/datasets/{dataset_id}/export", tags=["Continuous Learning Engine"])
 async def export_dataset(
     dataset_id: uuid.UUID,
-    format: str = Query("jsonl", regex="^(jsonl|json|csv)$"),
+    format: str = Query("jsonl", pattern="^(jsonl|json|csv)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):

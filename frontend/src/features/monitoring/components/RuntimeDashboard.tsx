@@ -23,7 +23,7 @@ export const RuntimeDashboard: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const getStatusIcon = (status: str) => {
+    const getStatusIcon = (status: string) => {
         switch(status) {
             case 'completed':
             case 'approved':

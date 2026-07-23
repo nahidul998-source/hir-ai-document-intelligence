@@ -22,9 +22,10 @@ class PromptRegistry:
         prompt = f"Extract all data for a {schema_def.name} document.\n\nDescription: {schema_def.description}\n\nRequired modules:\n"
         
         for module in schema_def.modules:
-            prompt += f"- {module.name}: {module.description}\n"
+            prompt += f"- {module.title}:\n"
             for field in module.fields:
-                prompt += f"  * {field.name} ({field.type}): {field.description}\n"
+                desc = f": {field.description}" if field.description else ""
+                prompt += f"  * {field.name} ({field.type}){desc}\n"
                 
         prompt += "\nEnsure the extracted JSON strictly matches the provided schema structure. Leave missing fields as null."
         return prompt
@@ -64,13 +65,13 @@ class PromptRegistry:
             return {"version": "1.0.0"}
             
         return {
-            "version": schema_def.version,
+            "version": getattr(schema_def, "version", "1.0.0"),
             "author": "SchemaRegistry",
             "approval_status": "approved",
             "supported_document_types": [doc_type.value],
             "compatible_model_families": ["gpt-4", "claude-3"],
-            "created_date": schema_def.effective_date,
-            "modified_date": schema_def.effective_date
+            "created_date": getattr(schema_def, "effective_date", None),
+            "modified_date": getattr(schema_def, "effective_date", None)
         }
 
     def get_version(self, doc_type: DocumentType) -> str:

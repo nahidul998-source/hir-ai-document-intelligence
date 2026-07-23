@@ -26,6 +26,9 @@ class MockReviewRepository:
         self.sessions[session.document_id] = session
         return session
 
+    async def get_fields(self, session_id):
+        return [f for (s_id, f_name), f in self.fields.items() if s_id == session_id]
+
     async def get_field(self, session_id, field_name):
         return self.fields.get((session_id, field_name))
 

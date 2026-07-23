@@ -22,24 +22,27 @@ class AIOrchestrator:
 
     async def get_route_for_document(self, document_type: str) -> List[str]:
         """Query database for custom routing rules, falling back to manager priority list."""
-        async with async_session_maker() as session:
-            result = await session.execute(
-                select(AIProviderRoutingRule).where(AIProviderRoutingRule.document_type == document_type)
-            )
-            rule = result.scalar_one_or_none()
-            if rule and rule.provider_keys:
-                return rule.provider_keys
-            
-            # Fallback to generic route
-            result = await session.execute(
-                select(AIProviderRoutingRule).where(AIProviderRoutingRule.document_type == "generic")
-            )
-            generic_rule = result.scalar_one_or_none()
-            if generic_rule and generic_rule.provider_keys:
-                return generic_rule.provider_keys
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(AIProviderRoutingRule).where(AIProviderRoutingRule.document_type == document_type)
+                )
+                rule = result.scalar_one_or_none()
+                if rule and rule.provider_keys:
+                    return rule.provider_keys
+                
+                # Fallback to generic route
+                result = await session.execute(
+                    select(AIProviderRoutingRule).where(AIProviderRoutingRule.document_type == "generic")
+                )
+                generic_rule = result.scalar_one_or_none()
+                if generic_rule and generic_rule.provider_keys:
+                    return generic_rule.provider_keys
+        except Exception:
+            pass
 
-            # Default fallback to global manager priority list
-            return self.manager.priority
+        # Default fallback to global manager priority list
+        return self.manager.priority
 
     async def generate_json(
         self,
@@ -86,9 +89,9 @@ class AIOrchestrator:
                 logger.info(f"[Orchestrator] Skipping provider '{provider_key}': capabilities mismatch.")
                 continue
 
-            # Verify health status in metrics
+            # Verify health status
             metrics = self.manager.metrics.get(provider_key, {})
-            if metrics.get("status") == "Unhealthy":
+            if metrics.get("status") == "Unhealthy" or not await provider.is_healthy():
                 logger.info(f"[Orchestrator] Skipping provider '{provider_key}': Unhealthy state.")
                 continue
 
@@ -147,7 +150,7 @@ class AIOrchestrator:
                 last_exception = e
                 # Record fallback count in metrics
                 if provider_key in self.manager.metrics:
-                    self.manager.metrics[provider_key]["fallback_count"] += 1
+                    self.manager.metrics[provider_key]["fallback_count"] = self.manager.metrics[provider_key].get("fallback_count", 0) + 1
                 
                 continue
 

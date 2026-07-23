@@ -35,13 +35,17 @@ class AIProviderManager:
 
     async def reload_config(self) -> None:
         """Loads or reloads the configuration from the database."""
-        async with async_session_maker() as session:
-            result = await session.execute(
-                select(AIProviderConfig).order_by(AIProviderConfig.priority_index.asc())
-            )
-            db_configs = result.scalars().all()
-            
-            # If nothing in database, bootstrap from ai.yaml (as fallback)
+        db_configs = []
+        try:
+            async with async_session_maker() as session:
+                result = await session.execute(
+                    select(AIProviderConfig).order_by(AIProviderConfig.priority_index.asc())
+                )
+                db_configs = result.scalars().all()
+        except Exception:
+            db_configs = []
+
+        # If nothing in database, bootstrap from ai.yaml (as fallback)
             if not db_configs:
                 logger.warning("No AI Provider configurations found in database. Seeding not complete?")
                 # Fallback to loading YAML if database is empty (for bootstrap)

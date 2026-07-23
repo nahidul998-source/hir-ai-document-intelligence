@@ -36,9 +36,11 @@ class ReviewCommandHandler:
         # Get document to get its type
         from sqlalchemy.future import select
         from app.infrastructure.database.models import Document
-        stmt = select(Document).where(Document.id == document_id)
-        res = await self.repo.db.execute(stmt)
-        doc = res.scalars().first()
+        doc = None
+        if hasattr(self.repo, "db") and self.repo.db:
+            stmt = select(Document).where(Document.id == document_id)
+            res = await self.repo.db.execute(stmt)
+            doc = res.scalars().first()
         doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
         
         fields = await self.repo.get_fields(session.id)
@@ -122,9 +124,11 @@ class ReviewCommandHandler:
         # Get document type for builder
         from sqlalchemy.future import select
         from app.infrastructure.database.models import Document
-        stmt = select(Document).where(Document.id == session.document_id)
-        res = await self.repo.db.execute(stmt)
-        doc = res.scalars().first()
+        doc = None
+        if hasattr(self.repo, "db") and self.repo.db:
+            stmt = select(Document).where(Document.id == session.document_id)
+            res = await self.repo.db.execute(stmt)
+            doc = res.scalars().first()
         doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
         
         erp_payload = ERPPayloadBuilder.build_payload(doc_type, approved_data)

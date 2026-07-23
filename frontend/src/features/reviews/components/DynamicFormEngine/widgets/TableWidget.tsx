@@ -1,4 +1,3 @@
-import React from 'react';
 import { ERPTable } from './ERPTable';
 
 export const TableWidget = ({ fieldSchema }: { fieldSchema: any }) => {

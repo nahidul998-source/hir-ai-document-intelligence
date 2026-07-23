@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit, ai_providers, schemas, evaluation
+from app.api.routers import auth, projects, documents, reviews, monitoring, learning, admin, analytics, rag, health, audit, ai_providers, schemas, evaluation
 from app.infrastructure.monitoring.telemetry import setup_telemetry
 from app.infrastructure.monitoring.metrics import PrometheusMiddleware
 from app.core.security_headers import setup_security_headers
@@ -110,6 +110,7 @@ app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["Health
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}", tags=["Security & Audit"])
 app.include_router(evaluation.router, prefix=f"{settings.API_V1_STR}")
 app.include_router(ai_providers.router)
+app.include_router(reviews.router)
 
 @app.get("/health", tags=["Monitoring"])
 async def health_check():

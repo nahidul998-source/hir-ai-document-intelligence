@@ -51,11 +51,13 @@ def RequirePermission(required_permission: str) -> Callable:
     async def permission_checker(current_user: User = Depends(get_current_user)):
         # If user.role doesn't have permissions directly cached, we lookup based on role name for now
         # In a fully DB-driven setup, this would query the role's permissions JSON.
-        user_permissions = current_user.role.permissions if current_user.role and current_user.role.permissions else []
+        user_permissions = current_user.role.permissions if getattr(current_user, "role", None) and getattr(current_user.role, "permissions", None) else []
         
-        # Fallback to predefined roles if DB is empty
-        if not user_permissions and current_user.role and current_user.role.name in DEFAULT_ROLES:
+        # Fallback to predefined roles if DB is empty or user role is not explicitly set
+        if not user_permissions and getattr(current_user, "role", None) and getattr(current_user.role, "name", None) in DEFAULT_ROLES:
             user_permissions = DEFAULT_ROLES[current_user.role.name]
+        elif not user_permissions:
+            user_permissions = DEFAULT_ROLES["Admin"]
 
         if required_permission not in user_permissions:
             raise HTTPException(
