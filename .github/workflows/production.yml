@@ -54,27 +54,3 @@ jobs:
           context: ./ai
           push: true
           tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LOWER }}-ai-worker:latest
-
-  deploy-to-k8s:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: ${{ secrets.KUBE_CONFIG != '' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        
-      - name: Set up Kubectl
-        uses: azure/setup-kubectl@v4
-        
-      - name: Configure Kubernetes Context
-        uses: azure/k8s-set-context@v4
-        with:
-          method: kubeconfig
-          kubeconfig: ${{ secrets.KUBE_CONFIG }}
-          
-      - name: Deploy to Kubernetes cluster
-        run: |
-          kubectl apply -f kubernetes/
-          kubectl rollout restart deployment hir-backend -n hir-production
-          kubectl rollout restart deployment hir-frontend -n hir-production
-          kubectl rollout restart deployment hir-ai-worker -n hir-production
