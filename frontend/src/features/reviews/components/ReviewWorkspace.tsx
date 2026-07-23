@@ -12,6 +12,10 @@ export const ReviewWorkspace: React.FC<ReviewWorkspaceProps> = ({ docId }) => {
     // using a dedicated hook or event listeners.
 
     useEffect(() => {
+        // Phase 11: UAT Telemetry tracking
+        const startTime = Date.now();
+        console.log(`[UAT Telemetry] Review session started for doc: ${docId}`);
+
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
@@ -20,7 +24,11 @@ export const ReviewWorkspace: React.FC<ReviewWorkspaceProps> = ({ docId }) => {
             }
             if (e.ctrlKey && e.key === 'Enter') {
                 e.preventDefault();
-                console.log("Document approved (mock)!");
+                const timeSpentSeconds = (Date.now() - startTime) / 1000;
+                console.log(`[UAT Telemetry] Document approved in ${timeSpentSeconds.toFixed(2)}s`);
+                
+                // In a real implementation, we would POST this to /evaluation/telemetry
+                // apiClient.post('/evaluation/telemetry', { docId, timeSpentSeconds, event: 'approval' });
                 // Trigger approval mutation
             }
         };
@@ -40,7 +48,7 @@ export const ReviewWorkspace: React.FC<ReviewWorkspaceProps> = ({ docId }) => {
                 
                 {/* Center Pane - ERP Form */}
                 <Panel defaultSize={40} minSize={25} className="bg-white border-r border-slate-200 flex flex-col z-0">
-                    <ERPFormPane />
+                    <ERPFormPane docId={docId} />
                 </Panel>
 
                 <PanelResizeHandle className="w-1.5 bg-slate-200 hover:bg-indigo-400 transition-colors cursor-col-resize active:bg-indigo-600" />

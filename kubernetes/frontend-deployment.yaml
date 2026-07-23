@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hir-frontend
+  namespace: hir-production
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hir-frontend
+  template:
+    metadata:
+      labels:
+        app: hir-frontend
+    spec:
+      containers:
+      - name: hir-frontend
+        image: hir/frontend:latest
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hir-frontend-service
+  namespace: hir-production
+spec:
+  selector:
+    app: hir-frontend
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 80

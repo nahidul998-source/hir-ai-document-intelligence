@@ -3,6 +3,8 @@ from typing import Dict, Any
 from .master_data_validator import MasterDataValidator
 from .business_rules import BusinessRulesValidator
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 logger = logging.getLogger(__name__)
 
 class ValidationPipeline:
@@ -12,8 +14,8 @@ class ValidationPipeline:
     2. Master Data Validation (Fuzzy Matching against ERP Cache)
     3. Business Rules Validation (Garment logic)
     """
-    def __init__(self):
-        self.mdv = MasterDataValidator()
+    def __init__(self, db: AsyncSession):
+        self.mdv = MasterDataValidator(db)
         self.brv = BusinessRulesValidator()
         
     async def run(self, document_type: str, extracted_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -45,10 +47,17 @@ class ValidationPipeline:
         # Step 2: Business Rules Validation
         br_errors = self.brv.validate(document_type, extracted_data)
         
+        # Step 3: Garment Knowledge Engine
+        from app.domain.services.knowledge_engine.engine import GarmentKnowledgeEngine
+        ke_insights = GarmentKnowledgeEngine.evaluate(document_type, extracted_data)
+        
+        # Combine insights and errors
+        all_errors = br_errors + ke_insights
+        
         # Final Output Payload
         return {
             "validated_data": enriched_data,
             "master_data_metadata": validation_metadata,
-            "business_rule_errors": br_errors,
-            "is_valid": len(br_errors) == 0 and all(m.get("status") == "valid" for m in validation_metadata.values())
+            "business_rule_errors": all_errors,
+            "is_valid": len(all_errors) == 0 and all(m.get("status") == "valid" for m in validation_metadata.values())
         }

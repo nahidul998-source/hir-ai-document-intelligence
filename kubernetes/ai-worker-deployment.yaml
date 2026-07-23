@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hir-ai-worker
+  namespace: hir-production
+spec:
+  replicas: 5 # Scale up AI workers for concurrent document processing
+  selector:
+    matchLabels:
+      app: hir-ai-worker
+  template:
+    metadata:
+      labels:
+        app: hir-ai-worker
+    spec:
+      containers:
+      - name: hir-ai-worker
+        image: hir/ai-worker:latest
+        envFrom:
+        - secretRef:
+            name: hir-ai-secrets
+        - configMapRef:
+            name: hir-worker-config
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+          limits:
+            cpu: "4000m"
+            memory: "4Gi"

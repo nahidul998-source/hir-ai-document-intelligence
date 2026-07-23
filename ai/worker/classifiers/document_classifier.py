@@ -10,33 +10,46 @@ class DocumentType(str, Enum):
 
 class DocumentClassifier:
     """
-    Classifies documents based on metadata and preliminary layout text.
+    Classifies documents using AI LLM reasoning (Zero-shot classification).
     """
-    def __init__(self):
-        self.keywords = {
-            DocumentType.TECH_PACK: ["tech pack", "technical package", "style details", "construction", "techpack"],
-            DocumentType.ORDER_SHEET: ["order sheet", "sales order", "ship date", "order qty"],
-            DocumentType.BOM: ["bill of materials", "bom", "trim", "fabric consumption", "placement"],
-            DocumentType.MEASUREMENT_SHEET: ["measurement", "spec", "size chart", "graded spec", "tol", "tolerance"],
-            DocumentType.PURCHASE_ORDER: ["purchase order", "vendor", "po number", "po#"]
-        }
+    def __init__(self, ai_orchestrator=None):
+        self.ai = ai_orchestrator
 
-    def classify(self, filename: str, first_page_text: str = "") -> DocumentType:
+    async def classify(self, filename: str, first_page_text: str = "") -> dict:
         """
-        Classify document based on filename and first page text.
+        Classify document based on filename and first page text using LLM.
         """
-        text_to_search = f"{filename} {first_page_text}".lower()
+        if not self.ai:
+            # Fallback for testing if no orchestrator provided
+            return {"document_type": DocumentType.TECH_PACK.value, "confidence": 1.0, "reasoning": "Fallback"}
+
+        prompt = f"""
+        Analyze the following text extracted from the first few pages of a document and its filename.
+        Determine which of the following document types it is:
+        {[dt.value for dt in DocumentType]}
         
-        scores = {doc_type: 0 for doc_type in DocumentType}
+        Filename: {filename}
+        Text: {first_page_text[:3000]}
         
-        for doc_type, keywords in self.keywords.items():
-            for kw in keywords:
-                if kw in text_to_search:
-                    scores[doc_type] += 1
+        Provide your reasoning and a confidence score between 0.0 and 1.0.
+        """
+        schema = {
+            "type": "object",
+            "properties": {
+                "document_type": {"type": "string", "enum": [dt.value for dt in DocumentType]},
+                "reasoning": {"type": "string"},
+                "confidence": {"type": "number"}
+            },
+            "required": ["document_type", "reasoning", "confidence"]
+        }
         
-        max_score = max(scores.values())
-        if max_score == 0:
-            return DocumentType.GENERIC
-            
-        best_match = [dt for dt, score in scores.items() if score == max_score][0]
-        return best_match
+        try:
+            res = await self.ai.generate_json(
+                prompt=prompt,
+                schema=schema,
+                document_type="classification",
+                system_prompt="You are an expert Garment Document Classifier."
+            )
+            return res["data"]
+        except Exception as e:
+            return {"document_type": DocumentType.GENERIC.value, "confidence": 0.0, "reasoning": f"Error: {e}"}

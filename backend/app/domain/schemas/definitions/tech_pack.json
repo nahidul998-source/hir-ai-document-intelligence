@@ -1,0 +1,79 @@
+{
+  "document_type": "tech_pack",
+  "name": "Tech Pack",
+  "description": "Garment Technical Package containing styling, materials, and measurement specifications.",
+  "modules": [
+    {
+      "module_id": "style_info",
+      "title": "Style Information",
+      "fields": [
+        {
+          "name": "style_number",
+          "type": "string",
+          "ui": {
+            "ui_widget": "text",
+            "label": "Style Number",
+            "required": true
+          },
+          "erp_mapping": {
+            "target_table": "Styles",
+            "target_field": "StyleNo"
+          }
+        },
+        {
+          "name": "season",
+          "type": "string",
+          "ui": {
+            "ui_widget": "text",
+            "label": "Season",
+            "required": true
+          },
+          "erp_mapping": {
+            "target_table": "Styles",
+            "target_field": "SeasonCode"
+          }
+        }
+      ]
+    },
+    {
+      "module_id": "bom",
+      "title": "Bill of Materials",
+      "fields": [
+        {
+          "name": "materials",
+          "type": "array",
+          "ui": {
+            "ui_widget": "table",
+            "label": "Materials"
+          },
+          "items": {
+            "name": "material_row",
+            "type": "object",
+            "ui": {
+              "ui_widget": "row",
+              "label": "Material"
+            },
+            "properties": [
+              {
+                "name": "item_code",
+                "type": "string",
+                "ui": {
+                  "ui_widget": "text",
+                  "label": "Item Code"
+                }
+              },
+              {
+                "name": "description",
+                "type": "string",
+                "ui": {
+                  "ui_widget": "text",
+                  "label": "Description"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -217,6 +217,32 @@ async def list_audit_logs(
         ]
     }
 
+@router.get("/documents", tags=["Monitoring"])
+async def list_documents_status(
+    limit: int = Query(50, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Retrieves document processing status through the pipeline."""
+    from app.infrastructure.database.models import Document
+    
+    query = select(Document).order_by(desc(Document.created_at)).limit(limit)
+    res = await db.execute(query)
+    documents = res.scalars().all()
+    
+    return {
+        "documents": [
+            {
+                "id": str(doc.id),
+                "filename": doc.filename,
+                "status": doc.status,
+                "document_type": doc.document_type,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                "updated_at": doc.updated_at.isoformat() if doc.updated_at else None
+            }
+            for doc in documents
+        ]
+    }
 
 @router.get("/jobs", tags=["Monitoring"])
 async def get_jobs_statistics(

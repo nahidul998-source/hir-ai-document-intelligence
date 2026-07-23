@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.api.deps import _event_publisher
-from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit, ai_providers
+from app.api.routers import auth, projects, documents, monitoring, learning, admin, analytics, rag, health, audit, ai_providers, schemas, evaluation
 from app.infrastructure.monitoring.telemetry import setup_telemetry
 from app.infrastructure.monitoring.metrics import PrometheusMiddleware
 from app.core.security_headers import setup_security_headers
@@ -100,6 +100,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
 app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
+app.include_router(schemas.router)
 app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}", tags=["Monitoring"])
 app.include_router(learning.router, prefix=f"{settings.API_V1_STR}", tags=["Continuous Learning Engine"])
 app.include_router(admin.router, prefix=f"{settings.API_V1_STR}", tags=["Enterprise Administration"])
@@ -107,6 +108,7 @@ app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}", tags=["Ana
 app.include_router(rag.router, prefix=f"{settings.API_V1_STR}", tags=["RAG & Knowledge Base"])
 app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["Health & Readiness"])
 app.include_router(audit.router, prefix=f"{settings.API_V1_STR}", tags=["Security & Audit"])
+app.include_router(evaluation.router, prefix=f"{settings.API_V1_STR}")
 app.include_router(ai_providers.router)
 
 @app.get("/health", tags=["Monitoring"])

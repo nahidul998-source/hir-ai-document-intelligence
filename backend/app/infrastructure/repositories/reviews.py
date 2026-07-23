@@ -24,6 +24,11 @@ class ReviewRepository:
         await self.db.refresh(session)
         return session
         
+    async def get_fields(self, session_id: UUID) -> List[ReviewField]:
+        stmt = select(ReviewField).where(ReviewField.session_id == session_id)
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())
+        
     async def get_field(self, session_id: UUID, field_name: str) -> Optional[ReviewField]:
         stmt = select(ReviewField).where(
             ReviewField.session_id == session_id,

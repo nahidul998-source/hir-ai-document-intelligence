@@ -23,7 +23,7 @@ Start-Process powershell -ArgumentList '-NoExit', '-Command', $frontendCommand
 
 # 3. Start AI Worker
 Write-Host '[3/4] Launching Standalone AI Worker...' -ForegroundColor Yellow
-$aiCommand = 'cd "' + $RootDir + '"; $env:PYTHONPATH="backend;."; backend\.venv\Scripts\python -u ai/worker/main.py'
+$aiCommand = 'cd "' + $RootDir + '"; $env:PYTHONPATH="backend;."; $env:DATABASE_URL_OVERRIDE="sqlite+aiosqlite:///./backend/hir_dev.db"; backend\.venv\Scripts\python -u ai/worker/main.py'
 Start-Process powershell -ArgumentList '-NoExit', '-Command', $aiCommand
 
 # 4. Start ERP Worker

@@ -1,32 +1,54 @@
 import logging
 from typing import Dict, Any, List
-from .fuzzy_matcher import FuzzyMatcher
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy import or_
+
+# Note: In production we'd use pg_trgm, but we'll use a basic ILIKE search here for compatibility without requiring postgres extension setup.
+from app.infrastructure.database.models_master_data import MasterBuyer, MasterSupplier, MasterFabric, MasterUOM
 
 logger = logging.getLogger(__name__)
 
 class MasterDataValidator:
     """
-    Validates extracted values against local Master Data Cache.
+    Validates extracted values against Postgres Master Data tables.
     """
-    def __init__(self, threshold: float = 0.85):
-        self.matcher = FuzzyMatcher(threshold=threshold)
+    def __init__(self, db: AsyncSession):
+        self.db = db
         
-    async def get_cached_master_data(self, entity_type: str) -> List[Dict[str, Any]]:
+    async def get_cached_master_data(self, entity_type: str, query: str) -> List[Dict[str, Any]]:
         """
-        Simulates fetching cached ERP data from Redis/Local DB.
+        Fetches master data directly from PostgreSQL.
         """
-        # Mock data (this would actually query the md_* tables)
-        if entity_type == "supplier":
-            return [
-                {"erp_id": "SUP-101", "name": "FastSew Ltd", "aliases": ["Fast Sew", "FastSew"]},
-                {"erp_id": "SUP-102", "name": "Prime Textiles", "aliases": ["Prime", "PrimeTex"]}
-            ]
-        elif entity_type == "uom":
-            return [
-                {"erp_id": "UOM-PCS", "name": "Pieces", "aliases": ["pcs", "pieces", "pc"]},
-                {"erp_id": "UOM-KGS", "name": "Kilograms", "aliases": ["kg", "kgs", "kilo"]}
-            ]
-        return []
+        model_map = {
+            "supplier": MasterSupplier,
+            "buyer": MasterBuyer,
+            "fabric": MasterFabric,
+            "uom": MasterUOM
+        }
+        
+        model_class = model_map.get(entity_type)
+        if not model_class:
+            return []
+            
+        stmt = select(model_class).where(
+            or_(
+                model_class.name.ilike(f"%{query}%"),
+                model_class.erp_reference_id.ilike(f"%{query}%")
+            )
+        ).limit(5)
+        
+        result = await self.db.execute(stmt)
+        records = result.scalars().all()
+        
+        return [
+            {
+                "erp_id": rec.erp_reference_id,
+                "name": rec.name,
+                "aliases": rec.aliases or []
+            }
+            for rec in records
+        ]
 
     async def validate_field(self, field_name: str, extracted_value: Any) -> Dict[str, Any]:
         """
@@ -40,28 +62,30 @@ class MasterDataValidator:
             "supplier_name": "supplier",
             "factory": "supplier",
             "uom": "uom",
-            "unit": "uom"
+            "unit": "uom",
+            "buyer": "buyer",
+            "fabric": "fabric"
         }
         
         entity_type = entity_map.get(field_name.lower())
         if not entity_type:
             return {"status": "skipped", "reason": "no_master_data_mapping"}
             
-        candidates = await self.get_cached_master_data(entity_type)
-        match_result = self.matcher.match(extracted_value, candidates)
+        candidates = await self.get_cached_master_data(entity_type, extracted_value)
         
-        if match_result:
+        if candidates:
+            best_match = candidates[0]
             return {
                 "status": "valid",
-                "master_record_id": match_result["erp_id"],
-                "matched_value": match_result["name"],
-                "normalized_value": self.matcher.normalize(extracted_value),
-                "match_score": match_result["match_score"],
-                "validation_method": match_result["validation_method"]
+                "master_record_id": best_match["erp_id"],
+                "matched_value": best_match["name"],
+                "normalized_value": extracted_value,
+                "match_score": 1.0, # Basic ILIKE matching
+                "validation_method": "postgres_ilike"
             }
             
         return {
             "status": "invalid",
             "reason": "no_match_found",
-            "normalized_value": self.matcher.normalize(extracted_value)
+            "normalized_value": extracted_value
         }

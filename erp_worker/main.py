@@ -28,13 +28,33 @@ async def process_erp_push(message: aio_pika.IncomingMessage) -> None:
         try:
             payload = json.loads(message.body.decode("utf-8"))
             session_id = payload.get("session_id")
-            logger.info(f"Received ERP push job for session {session_id}. Payload size: {len(message.body)} bytes")
+            transaction_type = payload.get("transaction_type", "LEGACY_PUSH")
+            data = payload.get("data", {})
             
-            # Idempotency check could go here if using a real DB
+            logger.info(f"Received ERP push job for session {session_id}. Type: {transaction_type}")
             
-            # Push data using adapter
-            response = await erp_adapter.push_data(session_id, payload)
-            logger.info(f"ERP Push Successful: {response}")
+            responses = []
+            
+            # Intelligent Routing
+            if transaction_type == "CREATE_STYLE":
+                res1 = await erp_adapter.create_style(data)
+                responses.append(res1)
+                
+                # If BOM data exists, automatically spawn BOM creation
+                if "BillOfMaterials" in data and data["BillOfMaterials"]:
+                    res2 = await erp_adapter.create_bom(res1.get("erp_style_id", "UNKNOWN"), data["BillOfMaterials"])
+                    responses.append(res2)
+                    
+            elif transaction_type == "CREATE_SALES_ORDER":
+                res1 = await erp_adapter.create_sales_order(data)
+                responses.append(res1)
+                
+            else:
+                # Fallback for old schema
+                res1 = await erp_adapter.push_data(session_id, payload)
+                responses.append(res1)
+                
+            logger.info(f"ERP Push Successful for {session_id}: {responses}")
             
         except Exception as e:
             logger.error(f"Error handling ERP push: {e}")

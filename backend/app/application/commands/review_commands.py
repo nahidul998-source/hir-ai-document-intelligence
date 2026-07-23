@@ -32,9 +32,38 @@ class ReviewCommandHandler:
         session = await self.repo.get_session_by_document(document_id)
         if not session:
             return None
+            
+        # Get document to get its type
+        from sqlalchemy.future import select
+        from app.infrastructure.database.models import Document
+        stmt = select(Document).where(Document.id == document_id)
+        res = await self.repo.db.execute(stmt)
+        doc = res.scalars().first()
+        doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
+        
+        fields = await self.repo.get_fields(session.id)
+        
+        fields_data = {}
+        highlights = []
+        for f in fields:
+            fields_data[f.field_name] = f.edited_value or f.original_value
+            if f.bounding_box and isinstance(f.bounding_box, list) and len(f.bounding_box) == 4:
+                highlights.append({
+                    "id": str(f.id),
+                    "field_name": f.field_name,
+                    "page": f.source_page or 1,
+                    "x": f.bounding_box[0],
+                    "y": f.bounding_box[1],
+                    "width": f.bounding_box[2] - f.bounding_box[0],
+                    "height": f.bounding_box[3] - f.bounding_box[1]
+                })
+        
         return {
             "session_id": str(session.id),
             "status": session.status,
+            "document_type": doc_type,
+            "fields": fields_data,
+            "highlights": highlights
         }
 
     async def handle_start_review(self, cmd: StartReviewCommand):
@@ -79,5 +108,35 @@ class ReviewCommandHandler:
         session = await self.repo.get_session_by_id(cmd.session_id)
         session.status = "approved"
         await self.repo.save_session(session)
-        # Event dispatch handled externally
+        
+        # Get fields to construct payload
+        fields = await self.repo.get_fields(cmd.session_id)
+        approved_data = {
+            f.field_name: f.edited_value or f.original_value 
+            for f in fields
+        }
+        
+        # Event dispatch via ERPPayloadBuilder
+        from app.domain.services.erp.payload_builder import ERPPayloadBuilder
+        
+        # Get document type for builder
+        from sqlalchemy.future import select
+        from app.infrastructure.database.models import Document
+        stmt = select(Document).where(Document.id == session.document_id)
+        res = await self.repo.db.execute(stmt)
+        doc = res.scalars().first()
+        doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
+        
+        erp_payload = ERPPayloadBuilder.build_payload(doc_type, approved_data)
+        erp_payload["session_id"] = str(session.id)
+        erp_payload["document_id"] = str(session.document_id)
+        erp_payload["approved_by"] = str(cmd.user_id)
+        
+        from app.infrastructure.events.publisher import RabbitMQEventPublisher
+        publisher = RabbitMQEventPublisher()
+        await publisher.publish_event(
+            routing_key="document.approved",
+            payload=erp_payload
+        )
+        
         return {"status": "document_approved"}

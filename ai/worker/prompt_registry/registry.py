@@ -1,59 +1,76 @@
-import yaml
-from pathlib import Path
+import sys
+import os
 from typing import Dict, Any
 from ai.worker.classifiers.document_classifier import DocumentType
 
-class PromptRegistry:
-    def __init__(self, templates_dir: str = "templates"):
-        self.templates_dir = Path(__file__).parent / templates_dir
-        self.templates: Dict[str, Dict[str, Any]] = {}
-        self.load_templates()
+# Make sure backend is in path to import SchemaRegistry
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend")))
+from app.domain.schemas.schema_registry import schema_registry
 
-    def load_templates(self):
-        if not self.templates_dir.exists():
-            self.templates_dir.mkdir(parents=True, exist_ok=True)
-            return
-            
-        for template_file in self.templates_dir.glob("*.yaml"):
-            with open(template_file, "r") as f:
-                content = yaml.safe_load(f)
-                self.templates[template_file.stem] = content
+class PromptRegistry:
+    def __init__(self):
+        pass
 
     def get_prompt(self, doc_type: DocumentType) -> str:
-        template = self.templates.get(doc_type.value)
-        if not template:
-            # Fallback to generic
-            template = self.templates.get(DocumentType.GENERIC.value)
-            
-        if not template:
+        """
+        Dynamically builds the extraction prompt based on the JSON schema definition.
+        """
+        schema_def = schema_registry.get_schema(doc_type.value)
+        if not schema_def:
             return "Extract all available information into a structured JSON format."
             
-        return template.get("prompt_text", "")
+        prompt = f"Extract all data for a {schema_def.name} document.\n\nDescription: {schema_def.description}\n\nRequired modules:\n"
+        
+        for module in schema_def.modules:
+            prompt += f"- {module.name}: {module.description}\n"
+            for field in module.fields:
+                prompt += f"  * {field.name} ({field.type}): {field.description}\n"
+                
+        prompt += "\nEnsure the extracted JSON strictly matches the provided schema structure. Leave missing fields as null."
+        return prompt
         
     def get_schema(self, doc_type: DocumentType) -> dict:
-        template = self.templates.get(doc_type.value)
-        if not template:
-            template = self.templates.get(DocumentType.GENERIC.value)
-            
-        if not template:
+        """
+        Dynamically constructs the JSON schema from the registry.
+        """
+        schema_def = schema_registry.get_schema(doc_type.value)
+        if not schema_def:
             return {}
             
-        return template.get("output_schema", {})
+        properties = {}
+        for module in schema_def.modules:
+            for field in module.fields:
+                if field.type == "array" and hasattr(field, "items") and field.items:
+                    items_def = field.items
+                    if isinstance(items_def, dict) and "properties" in items_def:
+                        item_props = {prop["name"]: {"type": prop.get("type", "string")} for prop in items_def["properties"]}
+                        properties[field.name] = {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": item_props
+                            }
+                        }
+                    else:
+                        properties[field.name] = {"type": "array", "items": {"type": "string"}}
+                else:
+                    properties[field.name] = {"type": field.type}
+                    
+        return {"type": "object", "properties": properties}
 
     def get_metadata(self, doc_type: DocumentType) -> dict:
-        template = self.templates.get(doc_type.value)
-        if not template:
-            template = self.templates.get(DocumentType.GENERIC.value)
-        if not template:
-            return {}
+        schema_def = schema_registry.get_schema(doc_type.value)
+        if not schema_def:
+            return {"version": "1.0.0"}
+            
         return {
-            "version": template.get("version", "1.0.0"),
-            "author": template.get("author", "System"),
-            "approval_status": template.get("approval_status", "approved"),
-            "supported_document_types": template.get("supported_document_types", [doc_type.value]),
-            "compatible_model_families": template.get("compatible_model_families", []),
-            "created_date": template.get("created_date", "2026-07-20"),
-            "modified_date": template.get("modified_date", "2026-07-20")
+            "version": schema_def.version,
+            "author": "SchemaRegistry",
+            "approval_status": "approved",
+            "supported_document_types": [doc_type.value],
+            "compatible_model_families": ["gpt-4", "claude-3"],
+            "created_date": schema_def.effective_date,
+            "modified_date": schema_def.effective_date
         }
 
     def get_version(self, doc_type: DocumentType) -> str:

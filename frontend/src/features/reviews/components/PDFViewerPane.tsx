@@ -26,7 +26,7 @@ export const PDFViewerPane: React.FC<PDFViewerPaneProps> = ({ docId }) => {
             setFileError(null);
             try {
                 const token = localStorage.getItem('token');
-                const response = await fetch(`http://localhost:8002/api/v1/documents/download/${docId}`, {
+                const response = await fetch(`/api/v1/documents/download/${docId}`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
                     }
