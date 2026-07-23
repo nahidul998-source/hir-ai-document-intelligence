@@ -18,6 +18,7 @@ class MinIOStorageAdapter(IStorageAdapter):
             secret_key=settings.MINIO_ROOT_PASSWORD,
             secure=secure
         )
+        self._is_degraded = False
         try:
             self._ensure_bucket(settings.MINIO_BUCKET_NAME)
         except Exception as e:
@@ -25,13 +26,19 @@ class MinIOStorageAdapter(IStorageAdapter):
             logging.getLogger(__name__).warning(
                 f"Could not connect to MinIO on startup: {e}. Storage adapter running in degraded mode."
             )
+            self._is_degraded = True
 
     def _ensure_bucket(self, bucket_name: str) -> None:
         """Helper to ensure target bucket exists."""
-        if not self.client.bucket_exists(bucket_name):
+        if not self._is_degraded and not self.client.bucket_exists(bucket_name):
             self.client.make_bucket(bucket_name)
 
     async def upload_file(self, bucket_name: str, object_name: str, data: BinaryIO, length: int, content_type: str) -> str:
+        if self._is_degraded:
+            import logging
+            logging.getLogger(__name__).warning("Storage is in degraded mode. Skipping upload.")
+            return object_name
+
         # Run synchronous MinIO calls inside threadpool to prevent blocking the async event loop
         def _upload():
             self._ensure_bucket(bucket_name)

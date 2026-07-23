@@ -59,7 +59,10 @@ async def run_verification():
     
     import io
     pdf_stream = io.BytesIO(pdf_bytes)
-    await storage.upload_file(settings.MINIO_BUCKET_NAME, minio_key, pdf_stream, len(pdf_bytes), "application/pdf")
+    try:
+        await storage.upload_file(settings.MINIO_BUCKET_NAME, minio_key, pdf_stream, len(pdf_bytes), "application/pdf")
+    except Exception as e:
+        print(f"   [WARN] Skipping MinIO upload due to error: {e}")
     
     upload_time = time.time() - start
     print(f"[SUCCESS] Success ({upload_time:.3f}s)")

@@ -45,10 +45,18 @@ class ReviewCommandHandler:
         
         fields = await self.repo.get_fields(session.id)
         
+        import json
         fields_data = {}
         highlights = []
         for f in fields:
-            fields_data[f.field_name] = f.edited_value or f.original_value
+            val_to_use = f.edited_value if f.edited_value is not None else f.original_value
+            if val_to_use and isinstance(val_to_use, str) and (val_to_use.startswith('[') or val_to_use.startswith('{')):
+                try:
+                    fields_data[f.field_name] = json.loads(val_to_use)
+                except json.JSONDecodeError:
+                    fields_data[f.field_name] = val_to_use
+            else:
+                fields_data[f.field_name] = val_to_use
             if f.bounding_box and isinstance(f.bounding_box, list) and len(f.bounding_box) == 4:
                 highlights.append({
                     "id": str(f.id),
@@ -74,9 +82,22 @@ class ReviewCommandHandler:
         if existing:
             return {"session_id": str(existing.id)}
             
+        from sqlalchemy.future import select
+        from app.infrastructure.database.models_phase2 import DocumentExtraction
+        
+        extraction_id = cmd.document_id
+        if hasattr(self.repo, "db") and self.repo.db:
+            stmt = select(DocumentExtraction).where(DocumentExtraction.document_id == cmd.document_id).order_by(DocumentExtraction.created_at.desc())
+            res = await self.repo.db.execute(stmt)
+            extraction = res.scalars().first()
+            if extraction:
+                extraction_id = extraction.id
+            else:
+                raise ValueError("Cannot start review session: Document extraction has not completed yet.")
+
         session = ReviewSession(
             document_id=cmd.document_id,
-            extraction_id=cmd.document_id, # Mocking extraction link for now
+            extraction_id=extraction_id,
             status="draft"
         )
         saved = await self.repo.save_session(session)
@@ -113,10 +134,17 @@ class ReviewCommandHandler:
         
         # Get fields to construct payload
         fields = await self.repo.get_fields(cmd.session_id)
-        approved_data = {
-            f.field_name: f.edited_value or f.original_value 
-            for f in fields
-        }
+        import json
+        approved_data = {}
+        for f in fields:
+            val_to_use = f.edited_value if f.edited_value is not None else f.original_value
+            if val_to_use and isinstance(val_to_use, str) and (val_to_use.startswith('[') or val_to_use.startswith('{')):
+                try:
+                    approved_data[f.field_name] = json.loads(val_to_use)
+                except json.JSONDecodeError:
+                    approved_data[f.field_name] = val_to_use
+            else:
+                approved_data[f.field_name] = val_to_use
         
         # Event dispatch via ERPPayloadBuilder
         from app.domain.services.erp.payload_builder import ERPPayloadBuilder

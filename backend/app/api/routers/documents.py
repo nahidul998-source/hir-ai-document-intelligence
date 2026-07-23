@@ -150,9 +150,15 @@ async def save_extraction(
         db.add(session)
         await db.flush()
         
+        import json
         # Create review fields
         for field_name, field_value in payload.extracted_data.items():
-            str_value = str(field_value) if field_value is not None else None
+            if field_value is None:
+                str_value = None
+            elif isinstance(field_value, (dict, list)):
+                str_value = json.dumps(field_value)
+            else:
+                str_value = str(field_value)
             metadata = payload.confidence_metadata.get(field_name, {})
             review_field = ReviewField(
                 session_id=session.id,

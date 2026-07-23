@@ -12,7 +12,7 @@ export const apiClient = axios.create({
 let isRefreshing = false;
 let failedQueue: Array<{resolve: Function, reject: Function}> = [];
 
-const processQueue = (error: any, token: string | null = null) => {
+const processQueue = (error: Error | null, token: string | null = null) => {
     failedQueue.forEach(prom => {
         if (error) {
             prom.reject(error);
@@ -66,11 +66,9 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
         } catch (refreshError) {
             processQueue(refreshError, null);
-            localStorage.removeItem('token');
-            localStorage.removeItem('refreshToken');
-            if (!window.location.pathname.includes('/login')) {
-                window.location.href = '/login';
-            }
+            import('../stores/authStore').then(({ useAuthStore }) => {
+                useAuthStore.getState().logout();
+            });
             return Promise.reject(refreshError);
         } finally {
             isRefreshing = false;

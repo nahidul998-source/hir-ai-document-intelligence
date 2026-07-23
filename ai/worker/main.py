@@ -132,7 +132,7 @@ async def handle_ocr_completed(message: aio_pika.IncomingMessage) -> None:
                 logger.info(f"Persisting extraction results for document: {document_id}")
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
-                        f"http://localhost:8000/api/v1/documents/{document_id}/extraction",
+                        f"http://localhost:8002/api/v1/documents/{document_id}/extraction",
                         json={
                             "extracted_data": result.get("extracted_data"),
                             "document_type": result.get("classifier_result"),

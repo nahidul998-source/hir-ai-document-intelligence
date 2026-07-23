@@ -15,6 +15,7 @@ dependencies = [
     # Placeholder for actual AI processing models in Phase 2
     # "docling>=1.0.0",
     # "paddleocr>=2.7.3",
+    "pdfplumber>=0.10.4",
 ]
 
 [dependency-groups]

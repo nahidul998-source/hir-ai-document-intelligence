@@ -1,8 +1,10 @@
+import React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { useReviewStore } from '../../../../../stores/reviewStore';
 import { CheckCircle2 } from 'lucide-react';
+import { FieldSchema } from '../types';
 
-export const TextWidget = ({ fieldSchema }: { fieldSchema: any }) => {
+export const TextWidget = React.memo(({ fieldSchema }: { fieldSchema: FieldSchema }) => {
     const { control } = useFormContext();
     const { activeField, setActiveField } = useReviewStore();
     const { name, ui } = fieldSchema;
@@ -40,4 +42,4 @@ export const TextWidget = ({ fieldSchema }: { fieldSchema: any }) => {
             </div>
         </div>
     );
-};
+});

@@ -19,22 +19,17 @@ export const ReviewWorkspace: React.FC<ReviewWorkspaceProps> = ({ docId }) => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.ctrlKey && e.key === 's') {
                 e.preventDefault();
-                console.log("Draft saved (mock)!");
-                // Trigger debounced save
+                // Handled natively by debounced ERPFormPane Auto-Save
             }
             if (e.ctrlKey && e.key === 'Enter') {
                 e.preventDefault();
                 const timeSpentSeconds = (Date.now() - startTime) / 1000;
-                console.log(`[UAT Telemetry] Document approved in ${timeSpentSeconds.toFixed(2)}s`);
-                
-                // In a real implementation, we would POST this to /evaluation/telemetry
-                // apiClient.post('/evaluation/telemetry', { docId, timeSpentSeconds, event: 'approval' });
-                // Trigger approval mutation
+                console.log(`[UAT Telemetry] Document reviewed in ${timeSpentSeconds.toFixed(2)}s`);
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
+    }, [docId]);
 
     return (
         <div className="flex h-[calc(100vh-4rem)] w-full bg-slate-50 overflow-hidden text-slate-900">

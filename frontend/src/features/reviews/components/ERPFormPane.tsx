@@ -5,6 +5,7 @@ import { CheckCircle2, Save } from 'lucide-react';
 import { RequirePermission } from '../../auth/components/RequirePermission';
 import { fetchDocumentSchema } from '../../../api/schemasApi';
 import { SchemaRenderer } from './DynamicFormEngine/SchemaRenderer';
+import { ErrorBoundary } from '../../../lib/ErrorBoundary';
 
 export const ERPFormPane: React.FC<{ docId: string }> = ({ docId }) => {
     const { setUnsavedChanges } = useReviewStore();
@@ -131,7 +132,9 @@ export const ERPFormPane: React.FC<{ docId: string }> = ({ docId }) => {
                         {isLoadingSchema ? (
                             <div className="p-8 text-center text-slate-500 animate-pulse">Loading Schema definitions...</div>
                         ) : schema ? (
-                            <SchemaRenderer schema={schema} />
+                            <ErrorBoundary fallback={<div className="p-4 text-red-500 bg-red-50 rounded">Failed to render schema form. Check schema validity.</div>}>
+                                <SchemaRenderer schema={schema} />
+                            </ErrorBoundary>
                         ) : (
                             <div className="p-8 text-center text-red-500">Error loading schema</div>
                         )}

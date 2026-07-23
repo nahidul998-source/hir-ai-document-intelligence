@@ -8,7 +8,7 @@ import os
 # Ensure backend can be imported
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
 
-from adapters.mock_erp_adapter import MockERPAdapter
+from adapters.webhook_erp_adapter import WebhookERPAdapter
 from app.core.settings import settings
 from app.infrastructure.events.queue_topology import setup_queue_topology
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 RABBITMQ_URL = settings.queue.url
 
-erp_adapter = MockERPAdapter()
+erp_adapter = WebhookERPAdapter()
 
 async def process_erp_push(message: aio_pika.IncomingMessage) -> None:
     """Callback function for ERP integration."""

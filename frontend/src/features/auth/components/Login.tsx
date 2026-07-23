@@ -3,13 +3,18 @@ import { useForm } from 'react-hook-form';
 import { apiClient } from '../../../lib/api-client';
 import { useAuthStore } from '../../../stores/authStore';
 
+interface LoginForm {
+  email: string;
+  password: string;
+}
+
 export const Login: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginForm>();
   const login = useAuthStore((state) => state.login);
   const [apiError, setApiError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: LoginForm) => {
     setIsLoading(true);
     setApiError(null);
     try {
@@ -24,8 +29,9 @@ export const Login: React.FC = () => {
       });
 
       login(response.data.access_token);
-    } catch (err: any) {
-      setApiError(err.response?.data?.detail || 'Authentication failed. Please check credentials.');
+    } catch (err: unknown) {
+      const error = err as any;
+      setApiError(error.response?.data?.detail || 'Authentication failed. Please check credentials.');
     } finally {
       setIsLoading(false);
     }

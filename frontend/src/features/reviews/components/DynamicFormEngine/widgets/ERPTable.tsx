@@ -6,8 +6,9 @@ import {
     flexRender,
     createColumnHelper,
 } from '@tanstack/react-table';
+import { FieldSchema } from '../types';
 
-export const ERPTable = ({ fieldSchema }: { fieldSchema: any }) => {
+export const ERPTable = React.memo(({ fieldSchema }: { fieldSchema: FieldSchema }) => {
     const { control, register } = useFormContext();
     const { name, ui, items } = fieldSchema;
 
@@ -23,12 +24,12 @@ export const ERPTable = ({ fieldSchema }: { fieldSchema: any }) => {
         }
     }, [fields.length, append]);
 
-    const columnHelper = createColumnHelper<any>();
+    const columnHelper = createColumnHelper<Record<string, string>>();
 
     const columns = useMemo(() => {
         if (!items || !items.properties) return [];
 
-        return items.properties.map((prop: any) => {
+        return items.properties.map((prop: FieldSchema) => {
             return columnHelper.accessor(prop.name, {
                 header: () => prop.ui?.label || prop.name,
                 cell: (info) => {
@@ -105,4 +106,4 @@ export const ERPTable = ({ fieldSchema }: { fieldSchema: any }) => {
             )}
         </div>
     );
-};
+});
