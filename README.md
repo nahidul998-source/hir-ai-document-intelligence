@@ -14,7 +14,8 @@
 
 ### 📑 Document Processing & AI Extraction
 - **Automated Extraction**: Classifies documents, extracts fields, and calculates confidence scores.
-- **Multi-Provider AI**: Supports GitHub Models, Google Gemini API, and customizable LLM providers via an abstracted Provider Manager.
+- **Queue Controls**: Pause, delete, or manually re-process stuck documents directly from the workspace.
+- **Multi-Provider AI**: Supports GitHub Models, Google Gemini API, and customizable LLM providers via an abstracted Provider Manager. Users can force-override the AI provider on a per-document basis.
 - **Validation Rules**: Configurable field validators ensuring data compliance before ERP sync.
 
 ### 👤 Human-in-the-Loop (HITL) Review Workspace
@@ -165,9 +166,24 @@ GITHUB_TOKEN=your-github-token-here
    ```
    *Swagger API Documentation will be available at `http://localhost:8002/docs`.*
 
+### 4. AI Worker Setup
+
+The AI Worker handles asynchronous document classification, OCR, and extraction from the RabbitMQ queues. It must be run in a separate terminal.
+
+1. Ensure the backend virtual environment is activated.
+2. Run the AI Worker from the **root directory** (not the backend folder):
+   ```bash
+   # Windows PowerShell:
+   $env:PYTHONPATH="."; .\backend\.venv\Scripts\python.exe -m ai.worker.main
+   
+   # Linux / macOS:
+   export PYTHONPATH="."
+   ./backend/.venv/bin/python -m ai.worker.main
+   ```
+
 ---
 
-### 4. Frontend Setup
+### 5. Frontend Setup
 
 1. Navigate to the frontend directory:
    ```bash

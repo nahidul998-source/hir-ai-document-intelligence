@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiClient } from '../../../lib/api-client';
 
 interface Document {
   id: string;
@@ -12,13 +13,30 @@ interface Document {
 interface DocumentListProps {
   documents: Document[];
   onReviewDocument?: (docId: string) => void;
+  onProcessDocument?: (docId: string, providerKey?: string) => void;
+  onDeleteDocument?: (docId: string) => void;
 }
 
-export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewDocument }) => {
+export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewDocument, onProcessDocument, onDeleteDocument }) => {
+  const [providers, setProviders] = useState<{key: string, name: string}[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const response = await apiClient.get('/monitoring/providers');
+        setProviders(response.data);
+      } catch (err) {
+        console.error('Failed to fetch providers', err);
+      }
+    };
+    fetchProviders();
+  }, []);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
       case 'processing': return 'bg-blue-500/10 text-blue-500 border-blue-500/20';
+      case 'review_pending': return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
       case 'completed': return 'bg-green-500/10 text-green-500 border-green-500/20';
       case 'failed': return 'bg-red-500/10 text-red-500 border-red-500/20';
       default: return 'bg-slate-500/10 text-slate-500 border-slate-500/20';
@@ -27,8 +45,21 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewD
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-800">
+      <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-100">Document Queue</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-400">Force AI Provider:</span>
+          <select 
+            className="text-xs bg-slate-950 border border-slate-800 text-slate-300 rounded px-2 py-1 outline-none"
+            value={selectedProvider}
+            onChange={(e) => setSelectedProvider(e.target.value)}
+          >
+            <option value="">Auto (Orchestrator)</option>
+            {providers.map(p => (
+              <option key={p.key} value={p.key}>{p.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-slate-300">
@@ -63,12 +94,28 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewD
                   <td className="px-6 py-4 text-slate-400">
                     {new Date(doc.created_at).toLocaleString()}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right flex items-center justify-end gap-2">
+                    {doc.status === 'review_pending' && (
+                      <button
+                        onClick={() => onReviewDocument?.(doc.id)}
+                        className="px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded transition-colors"
+                      >
+                        Review
+                      </button>
+                    )}
+                    {(doc.status === 'pending' || doc.status === 'failed' || doc.status === 'processing') && (
+                      <button
+                        onClick={() => onProcessDocument?.(doc.id, selectedProvider || undefined)}
+                        className="px-3 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors"
+                      >
+                        Process
+                      </button>
+                    )}
                     <button
-                      onClick={() => onReviewDocument?.(doc.id)}
-                      className="px-3 py-1.5 text-xs font-semibold bg-violet-600 hover:bg-violet-700 text-white rounded transition-colors"
+                      onClick={() => onDeleteDocument?.(doc.id)}
+                      className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                     >
-                      Review
+                      Delete
                     </button>
                   </td>
                 </tr>

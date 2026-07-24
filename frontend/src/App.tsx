@@ -31,7 +31,31 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchDocuments();
+    const interval = setInterval(() => {
+      fetchDocuments();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [selectedProjectId]);
+
+  const handleDeleteDocument = async (docId: string) => {
+    try {
+      await apiClient.delete(`/documents/${docId}`);
+      await fetchDocuments();
+    } catch (err) {
+      console.error('Failed to delete document', err);
+    }
+  };
+
+  const handleProcessDocument = async (docId: string, providerKey?: string) => {
+    try {
+      await apiClient.post(`/documents/${docId}/process`, {
+        ai_provider: providerKey || null
+      });
+      await fetchDocuments();
+    } catch (err) {
+      console.error('Failed to process document', err);
+    }
+  };
 
   if (!isAuthenticated) {
     return (
@@ -158,6 +182,8 @@ const App: React.FC = () => {
                     <DocumentList 
                       documents={documents} 
                       onReviewDocument={setActiveReviewDocId}
+                      onProcessDocument={handleProcessDocument}
+                      onDeleteDocument={handleDeleteDocument}
                     />
                   </div>
                 </div>

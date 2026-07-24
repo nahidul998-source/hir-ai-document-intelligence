@@ -128,7 +128,7 @@ class DocumentProcessor:
             "ocr_metrics": metrics.get_metrics()
         }
         
-    async def extract_data(self, filename: str, extracted_text: str, doc_type: str, db: Any) -> Dict[str, Any]:
+    async def extract_data(self, filename: str, extracted_text: str, doc_type: str, db: Any, ai_provider: Optional[str] = None) -> Dict[str, Any]:
         """Phase 3: LLM Extraction, Master Data Validation, and Confidence Engine."""
         self.validation_pipeline = ValidationPipeline(db)
         metrics = MetricsTracker()
@@ -155,7 +155,8 @@ class DocumentProcessor:
                 schema=doc_schema,
                 document_type=doc_type,
                 system_prompt=system_prompt,
-                trace_id=trace_id
+                trace_id=trace_id,
+                forced_provider_key=ai_provider
             )
             extracted_json = orch_res["data"]
             provider_name = orch_res["provider"]

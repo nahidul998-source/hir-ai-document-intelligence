@@ -5,7 +5,7 @@ import aio_pika
 
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
 from ai.worker.pipeline.document_processor import DocumentProcessor
-from app.core.settings import settings
+from app.core.config import settings
 from app.infrastructure.events.queue_topology import setup_queue_topology
 
 logging.basicConfig(
@@ -18,11 +18,11 @@ logger = logging.getLogger(__name__)
 ai_provider_manager = AIProviderManager()
 document_processor = DocumentProcessor(ai_provider_manager)
 
-RABBITMQ_URL = settings.queue.url
+RABBITMQ_URL = settings.RABBITMQ_URL
 
 
 async def publish_event(channel: aio_pika.Channel, routing_key: str, payload: dict):
-    exchange = await channel.get_exchange("hir.events")
+    exchange = await channel.declare_exchange("hir.events", aio_pika.ExchangeType.TOPIC, durable=True)
     await exchange.publish(
         aio_pika.Message(
             body=json.dumps(payload).encode(),
@@ -39,6 +39,7 @@ async def handle_document_uploaded(message: aio_pika.IncomingMessage) -> None:
             document_id = payload.get("document_id")
             filename = payload.get("filename")
             minio_key = payload.get("minio_key")
+            ai_provider = payload.get("ai_provider")
             logger.info(f"Classification Worker handling document: {document_id}")
             
             import httpx
@@ -69,7 +70,8 @@ async def handle_document_uploaded(message: aio_pika.IncomingMessage) -> None:
                 "document_id": document_id,
                 "minio_key": minio_key,
                 "filename": filename,
-                "document_type": classification_result.get("document_type", "generic")
+                "document_type": classification_result.get("document_type", "generic"),
+                "ai_provider": ai_provider
             })
         except Exception as e:
             logger.error(f"Error in Classification Worker: {e}")
@@ -84,6 +86,7 @@ async def handle_document_classified(message: aio_pika.IncomingMessage) -> None:
             filename = payload.get("filename")
             minio_key = payload.get("minio_key")
             doc_type = payload.get("document_type")
+            ai_provider = payload.get("ai_provider")
             logger.info(f"OCR Worker handling document: {document_id}")
             
             from app.infrastructure.adapters.storage.minio_adapter import MinIOStorageAdapter
@@ -102,7 +105,8 @@ async def handle_document_classified(message: aio_pika.IncomingMessage) -> None:
             await publish_event(message.channel, "ocr.completed", {
                 "document_id": document_id,
                 "document_type": doc_type,
-                "extracted_text": ocr_result["text"]
+                "extracted_text": ocr_result["text"],
+                "ai_provider": ai_provider
             })
         except Exception as e:
             logger.error(f"Error in OCR Worker: {e}")
@@ -116,6 +120,7 @@ async def handle_ocr_completed(message: aio_pika.IncomingMessage) -> None:
             document_id = payload.get("document_id")
             doc_type = payload.get("document_type")
             extracted_text = payload.get("extracted_text")
+            ai_provider = payload.get("ai_provider")
             logger.info(f"Extraction Worker handling document: {document_id}")
             
             from app.database.session import async_session_maker
@@ -126,7 +131,8 @@ async def handle_ocr_completed(message: aio_pika.IncomingMessage) -> None:
                     filename="extracted.pdf",
                     extracted_text=extracted_text,
                     doc_type=doc_type,
-                    db=db
+                    db=db,
+                    ai_provider=ai_provider
                 )
                 
                 logger.info(f"Persisting extraction results for document: {document_id}")
@@ -153,7 +159,7 @@ async def start_heartbeat():
     logger.info("Starting AI Worker heartbeat loop...")
     while True:
         try:
-            client = aioredis.from_url(settings.REDIS_URL)
+            client = aioredis.from_url(settings.REDIS_URL, decode_responses=False)
             await client.set("worker:heartbeat:ai_worker", datetime.utcnow().isoformat(), ex=30)
             await client.close()
         except Exception as e:

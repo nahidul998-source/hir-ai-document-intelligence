@@ -46,34 +46,34 @@ class AIProviderManager:
             db_configs = []
 
         # If nothing in database, bootstrap from ai.yaml (as fallback)
-            if not db_configs:
-                logger.warning("No AI Provider configurations found in database. Seeding not complete?")
-                # Fallback to loading YAML if database is empty (for bootstrap)
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                config_path = os.path.join(current_dir, "../../../../configs/ai.yaml")
-                if os.path.exists(config_path):
-                    with open(config_path, "r") as f:
-                        yaml_data = yaml.safe_load(f)
-                    priority_list = yaml_data.get("priority", [])
-                    providers_data = yaml_data.get("providers", {})
-                    # Just return simulated configs list
-                    db_configs = []
-                    for idx, k in enumerate(priority_list):
-                        if k in providers_data:
-                            p = providers_data[k]
-                            db_configs.append(AIProviderConfig(
-                                key=k,
-                                name=p.get("name", k),
-                                enabled=p.get("enabled", True),
-                                api_url=p.get("api_url", ""),
-                                api_key=p.get("api_key", ""),
-                                model_name=p.get("model_name", ""),
-                                connect_timeout=p.get("connect_timeout", 5),
-                                read_timeout=p.get("timeout", 60),
-                                retry_timeout=p.get("retry_timeout", 10),
-                                priority_index=idx,
-                                capabilities=p.get("capabilities", {})
-                            ))
+        if not db_configs:
+            logger.warning("No AI Provider configurations found in database. Seeding not complete?")
+            # Fallback to loading YAML if database is empty (for bootstrap)
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            config_path = os.path.join(current_dir, "../../../../configs/ai.yaml")
+            if os.path.exists(config_path):
+                with open(config_path, "r") as f:
+                    yaml_data = yaml.safe_load(f)
+                priority_list = yaml_data.get("priority", [])
+                providers_data = yaml_data.get("providers", {})
+                # Just return simulated configs list
+                db_configs = []
+                for idx, k in enumerate(priority_list):
+                    if k in providers_data:
+                        p = providers_data[k]
+                        db_configs.append(AIProviderConfig(
+                            key=k,
+                            name=p.get("name", k),
+                            enabled=p.get("enabled", True),
+                            api_url=p.get("api_url", ""),
+                            api_key=p.get("api_key", ""),
+                            model_name=p.get("model_name", ""),
+                            connect_timeout=p.get("connect_timeout", 5),
+                            read_timeout=p.get("timeout", 60),
+                            retry_timeout=p.get("retry_timeout", 10),
+                            priority_index=idx,
+                            capabilities=p.get("capabilities", {})
+                        ))
 
             new_providers = {}
             self.priority = []

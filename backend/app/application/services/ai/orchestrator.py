@@ -52,7 +52,8 @@ class AIOrchestrator:
         system_prompt: Optional[str] = None,
         required_capabilities: Optional[List[str]] = None,
         trace_id: Optional[str] = None,
-        correlation_id: Optional[str] = None
+        correlation_id: Optional[str] = None,
+        forced_provider_key: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Executes JSON extraction. Resolves best candidate provider using capabilities 
@@ -67,7 +68,10 @@ class AIOrchestrator:
         required_caps = required_capabilities or ["json_mode"]
 
         # Step 1: Resolve provider priority route for this document type
-        provider_route = await self.get_route_for_document(document_type)
+        if forced_provider_key:
+            provider_route = [forced_provider_key]
+        else:
+            provider_route = await self.get_route_for_document(document_type)
 
         # Step 2: Iterate through fallback sequence
         fallback_count = 0
@@ -79,15 +83,16 @@ class AIOrchestrator:
                 continue
 
             # Capability verification (context window, json mode etc.)
-            capabilities_match = True
-            for cap in required_caps:
-                if not provider.capabilities.get(cap, False):
-                    capabilities_match = False
-                    break
+            if not forced_provider_key:
+                capabilities_match = True
+                for cap in required_caps:
+                    if not provider.capabilities.get(cap, False):
+                        capabilities_match = False
+                        break
 
-            if not capabilities_match:
-                logger.info(f"[Orchestrator] Skipping provider '{provider_key}': capabilities mismatch.")
-                continue
+                if not capabilities_match:
+                    logger.info(f"[Orchestrator] Skipping provider '{provider_key}': capabilities mismatch.")
+                    continue
 
             # Verify health status
             metrics = self.manager.metrics.get(provider_key, {})

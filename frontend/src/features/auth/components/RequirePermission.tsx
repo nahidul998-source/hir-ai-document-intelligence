@@ -12,9 +12,8 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
     children, 
     fallback = null 
 }) => {
-    // In a real app, useAuthStore would contain the user's permissions array
     const { permissions } = useAuthStore((state: any) => ({
-        permissions: state.permissions || ['review:write', 'review:approve', 'review:read'] // Mock default permissions
+        permissions: state.permissions || []
     }));
 
     if (!permissions.includes(permission)) {

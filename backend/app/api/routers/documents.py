@@ -1,4 +1,6 @@
 import uuid
+from typing import List, Optional
+from pydantic import BaseModel
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from app.api.deps import get_document_service, get_current_user
@@ -98,6 +100,47 @@ async def download_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to download file: {str(e)}"
         )
+
+
+@router.delete("/{document_id}")
+async def delete_document(
+    document_id: uuid.UUID,
+    document_service: DocumentService = Depends(get_document_service),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        await document_service.delete_document(document_id)
+        return {"status": "success", "message": "Document deleted"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to delete document: {str(e)}"
+        )
+
+
+class ProcessDocumentRequest(BaseModel):
+    ai_provider: Optional[str] = None
+
+
+@router.post("/{document_id}/process")
+async def process_document(
+    document_id: uuid.UUID,
+    request: Optional[ProcessDocumentRequest] = None,
+    document_service: DocumentService = Depends(get_document_service),
+    current_user: User = Depends(get_current_user)
+):
+    try:
+        ai_provider = request.ai_provider if request else None
+        document = await document_service.process_document(document_id, ai_provider=ai_provider)
+        return {"status": "success", "document_id": str(document.id), "status": document.status}
+    except ValueError as ve:
+        raise HTTPException(status_code=404, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process document: {str(e)}"
+        )
+
 
 from app.schemas.extraction_payload import ExtractionPayload
 from app.infrastructure.database.models_phase2 import DocumentExtraction

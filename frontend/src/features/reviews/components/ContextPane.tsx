@@ -36,20 +36,26 @@ export const ContextPane: React.FC = () => {
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 border-b pb-1 border-slate-200">
                         <ShieldAlert size={16} className="text-indigo-500" /> Validation Trace
                     </div>
-                    <div className="bg-white p-3 rounded-md border border-slate-200 shadow-sm space-y-2 text-xs">
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">AI Confidence</span>
-                            <span className="font-medium text-emerald-600">98.5%</span>
+                    {activeField ? (
+                        <div className="bg-white p-3 rounded-md border border-slate-200 shadow-sm space-y-2 text-xs">
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">AI Confidence</span>
+                                <span className="font-medium text-slate-700">-</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Master Data Match</span>
+                                <span className="font-medium text-slate-700">-</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-slate-500">Provider</span>
+                                <span className="font-medium text-slate-700">-</span>
+                            </div>
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">Master Data Match</span>
-                            <span className="font-medium">Exact (BUY-001)</span>
+                    ) : (
+                        <div className="text-xs text-slate-500 italic text-center py-4 bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+                            Select a field to view validation trace.
                         </div>
-                        <div className="flex justify-between">
-                            <span className="text-slate-500">Provider</span>
-                            <span className="font-medium text-slate-700">Qwen 2.5 32B</span>
-                        </div>
-                    </div>
+                    )}
                 </section>
 
                 {/* Audit History */}
@@ -57,22 +63,15 @@ export const ContextPane: React.FC = () => {
                     <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-3 border-b pb-1 border-slate-200">
                         <History size={16} className="text-amber-500" /> Edit History
                     </div>
-                    <div className="space-y-3">
-                        <div className="relative pl-4 border-l-2 border-indigo-200">
-                            <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-indigo-500"></div>
-                            <div className="text-[10px] text-slate-400 mb-0.5">10:45 AM - AI Extraction</div>
-                            <div className="text-xs bg-white border border-slate-200 rounded p-2 text-slate-600 shadow-sm font-mono">
-                                "Acme Corporation"
-                            </div>
+                    {activeField ? (
+                        <div className="text-xs text-slate-500 italic text-center py-4 bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+                            No edit history available for this field.
                         </div>
-                        <div className="relative pl-4 border-l-2 border-slate-200">
-                            <div className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-slate-300"></div>
-                            <div className="text-[10px] text-slate-400 mb-0.5">11:02 AM - Edited by User</div>
-                            <div className="text-xs bg-amber-50 border border-amber-200 rounded p-2 text-slate-700 shadow-sm font-mono">
-                                "Acme Corp Ltd"
-                            </div>
+                    ) : (
+                        <div className="text-xs text-slate-500 italic text-center py-4 bg-white p-3 rounded-md border border-slate-200 shadow-sm">
+                            Select a field to view edit history.
                         </div>
-                    </div>
+                    )}
                 </section>
 
                 {/* Comments */}
@@ -82,12 +81,14 @@ export const ContextPane: React.FC = () => {
                     </div>
                     <div className="bg-white p-3 rounded-md border border-slate-200 shadow-sm">
                         <div className="text-xs text-slate-500 italic text-center py-4">
-                            No comments on this field yet.
+                            {activeField ? "No comments on this field yet." : "Select a field to view comments."}
                         </div>
-                        <div className="mt-2 flex gap-2">
-                            <input type="text" placeholder="Add note..." className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 focus:outline-none" />
-                            <button className="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded text-xs font-medium hover:bg-indigo-100 transition-colors">Post</button>
-                        </div>
+                        {activeField && (
+                            <div className="mt-2 flex gap-2">
+                                <input disabled type="text" placeholder="Add note..." className="flex-1 text-xs border border-slate-300 rounded px-2 py-1.5 focus:ring-1 focus:ring-indigo-500 focus:outline-none bg-slate-50 cursor-not-allowed" />
+                                <button disabled className="bg-slate-100 text-slate-400 px-3 py-1.5 rounded text-xs font-medium cursor-not-allowed">Post</button>
+                            </div>
+                        )}
                     </div>
                 </section>
 

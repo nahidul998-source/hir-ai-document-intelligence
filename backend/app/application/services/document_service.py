@@ -93,3 +93,46 @@ class DocumentService:
 
     async def list_documents(self, project_id: uuid.UUID) -> List[Document]:
         return await self.document_repo.get_by_project(project_id)
+
+    async def delete_document(self, document_id: uuid.UUID) -> None:
+        document = await self.document_repo.get(document_id)
+        if not document:
+            return
+
+        # Delete from Minio
+        try:
+            await self.storage_adapter.client.remove_object(
+                settings.MINIO_BUCKET_NAME,
+                document.minio_key
+            )
+        except Exception:
+            pass # Ignore if already deleted or missing
+            
+        await self.document_repo.delete(document_id)
+
+    async def process_document(self, document_id: uuid.UUID, ai_provider: Optional[str] = None) -> Document:
+        document = await self.document_repo.get(document_id)
+        if not document:
+            raise ValueError("Document not found")
+
+        # Update status to processing
+        document.status = "processing"
+        await self.document_repo.update(document)
+
+        # Republish event
+        payload = {
+            "document_id": str(document.id),
+            "project_id": str(document.project_id),
+            "filename": document.filename,
+            "minio_key": document.minio_key,
+            "version": document.current_version
+        }
+        if ai_provider:
+            payload["ai_provider"] = ai_provider
+
+        await self.event_publisher.publish_event(
+            routing_key="document.uploaded",
+            payload=payload
+        )
+        return document
+

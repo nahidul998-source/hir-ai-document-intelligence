@@ -75,6 +75,9 @@ async def detailed_health_check(
     alert_service = EventDrivenAlertingService(publisher)
     services = {}
     overall_status = "healthy"
+
+    # Ensure AI providers are loaded from DB before checking health
+    await ai_provider_manager.initialize()
     
     # 1. PostgreSQL Health
     db_start = time.perf_counter()
@@ -329,3 +332,21 @@ async def get_queues_monitoring(
             "error": str(e),
             "status": "unavailable"
         }
+
+
+@router.get("/providers", tags=["Monitoring"])
+async def list_available_providers(
+    current_user: User = Depends(get_current_user)
+):
+    """Returns a list of configured AI providers for frontend selection dropdowns."""
+    await ai_provider_manager.initialize()
+    providers = []
+    for key in ai_provider_manager.priority:
+        provider = ai_provider_manager.providers.get(key)
+        if provider and provider.enabled:
+            providers.append({
+                "key": key,
+                "name": provider.name,
+                "model_name": provider.model_name,
+            })
+    return providers
