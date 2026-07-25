@@ -1,7 +1,6 @@
 import uuid
 from typing import List, Optional
 from pydantic import BaseModel
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from app.api.deps import get_document_service, get_current_user
 from app.application.services.document_service import DocumentService
@@ -63,16 +62,6 @@ async def upload_document(
         )
 
 
-@router.get("/{project_id}", response_model=List[DocumentResponse])
-async def list_documents(
-    project_id: uuid.UUID,
-    document_service: DocumentService = Depends(get_document_service),
-    current_user: User = Depends(get_current_user)
-):
-    documents = await document_service.list_documents(project_id)
-    return documents
-
-
 @router.get("/download/{document_id}")
 async def download_document(
     document_id: uuid.UUID,
@@ -100,6 +89,16 @@ async def download_document(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to download file: {str(e)}"
         )
+
+
+@router.get("/{project_id}", response_model=List[DocumentResponse])
+async def list_documents(
+    project_id: uuid.UUID,
+    document_service: DocumentService = Depends(get_document_service),
+    current_user: User = Depends(get_current_user)
+):
+    documents = await document_service.list_documents(project_id)
+    return documents
 
 
 @router.delete("/{document_id}")
@@ -132,7 +131,7 @@ async def process_document(
     try:
         ai_provider = request.ai_provider if request else None
         document = await document_service.process_document(document_id, ai_provider=ai_provider)
-        return {"status": "success", "document_id": str(document.id), "status": document.status}
+        return {"status": "success", "document_id": str(document.id), "document_status": document.status}
     except ValueError as ve:
         raise HTTPException(status_code=404, detail=str(ve))
     except Exception as e:
@@ -143,8 +142,8 @@ async def process_document(
 
 
 from app.schemas.extraction_payload import ExtractionPayload
-from app.infrastructure.database.models_phase2 import DocumentExtraction
-from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField
+from app.infrastructure.database.models import DocumentExtraction
+from app.infrastructure.database.models import ReviewSession, ReviewField
 from app.database.session import get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -153,7 +152,8 @@ from sqlalchemy.future import select
 async def save_extraction(
     document_id: uuid.UUID,
     payload: ExtractionPayload,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     try:
         # Get document version
@@ -218,6 +218,9 @@ async def save_extraction(
             
         await db.commit()
         return {"status": "success", "extraction_id": str(extraction.id), "session_id": str(session.id)}
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
         import traceback

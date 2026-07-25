@@ -3,12 +3,12 @@ import yaml
 import asyncio
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.domain.interfaces import IAIProvider
 from app.infrastructure.adapters.providers.openai_provider import LocalOpenAIProvider
 from app.database.session import async_session_maker
-from app.infrastructure.database.models_ai_providers import AIProviderConfig
+from app.infrastructure.database.models import AIProviderConfig
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,8 @@ class AIProviderManager:
                     select(AIProviderConfig).order_by(AIProviderConfig.priority_index.asc())
                 )
                 db_configs = result.scalars().all()
-        except Exception:
+        except Exception as e:
+            logger.error(f"Database error during AI Provider config reload: {e}")
             db_configs = []
 
         # If nothing in database, bootstrap from ai.yaml (as fallback)
@@ -56,12 +57,13 @@ class AIProviderManager:
                     yaml_data = yaml.safe_load(f)
                 priority_list = yaml_data.get("priority", [])
                 providers_data = yaml_data.get("providers", {})
+                from types import SimpleNamespace
                 # Just return simulated configs list
                 db_configs = []
                 for idx, k in enumerate(priority_list):
                     if k in providers_data:
                         p = providers_data[k]
-                        db_configs.append(AIProviderConfig(
+                        db_configs.append(SimpleNamespace(
                             key=k,
                             name=p.get("name", k),
                             enabled=p.get("enabled", True),
@@ -75,10 +77,10 @@ class AIProviderManager:
                             capabilities=p.get("capabilities", {})
                         ))
 
-            new_providers = {}
-            self.priority = []
-            
-            for pconfig in db_configs:
+        new_providers = {}
+        self.priority = []
+        
+        for pconfig in db_configs:
                 key = pconfig.key
                 self.priority.append(key)
                 
@@ -124,7 +126,7 @@ class AIProviderManager:
                         "uptime_successes": 0
                     }
 
-            self.providers = new_providers
+        self.providers = new_providers
 
     def update_metrics(self, key: str, latency_ms: Optional[float] = None, error: Optional[str] = None, timeout: bool = False, retry: bool = False) -> None:
         """Helper to thread-safely record operational telemetry in memory."""
@@ -140,14 +142,14 @@ class AIProviderManager:
         if error:
             m["errors"] += 1
             m["last_error"] = {
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "message": error
             }
             m["status"] = "Error"
             if timeout:
                 m["timeout_count"] += 1
         else:
-            m["last_successful_request"] = datetime.utcnow().isoformat()
+            m["last_successful_request"] = datetime.now(timezone.utc).isoformat()
             m["status"] = "Healthy"
             if latency_ms is not None:
                 m["latencies"].append(latency_ms)
@@ -159,8 +161,9 @@ class AIProviderManager:
                 m["latency"] = sum(m["latencies"]) / len(m["latencies"])
                 
                 # Calculate P95
+                import math
                 sorted_lats = sorted(m["latencies"])
-                p95_idx = int(len(sorted_lats) * 0.95)
+                p95_idx = max(0, math.ceil(len(sorted_lats) * 0.95) - 1)
                 m["p95_latency"] = sorted_lats[p95_idx] if sorted_lats else latency_ms
                 
         # Recalculate success / failure rates
@@ -178,7 +181,7 @@ class AIProviderManager:
             is_healthy = await provider.is_healthy()
             
             m = self.metrics[key]
-            m["last_health_check"] = datetime.utcnow().isoformat()
+            m["last_health_check"] = datetime.now(timezone.utc).isoformat()
             m["uptime_pings"] += 1
             if is_healthy:
                 m["status"] = "Healthy"
@@ -188,17 +191,19 @@ class AIProviderManager:
 
     async def get_active_provider(self) -> LocalOpenAIProvider:
         """Compatibility helper to get the first healthy provider."""
-        await self.initialize()
+        if not self._initialized:
+            await self.initialize()
+            
         for provider_key in self.priority:
             provider = self.providers.get(provider_key)
             if provider and provider.enabled:
                 if await provider.is_healthy():
                     self.metrics[provider_key]["status"] = "Healthy"
-                    self.metrics[provider_key]["last_health_check"] = datetime.utcnow().isoformat()
+                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).isoformat()
                     return provider
                 else:
                     self.metrics[provider_key]["status"] = "Unhealthy"
-                    self.metrics[provider_key]["last_health_check"] = datetime.utcnow().isoformat()
+                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).isoformat()
                     
         raise RuntimeError("No healthy AI Providers are available. Fallback exhausted.")
 

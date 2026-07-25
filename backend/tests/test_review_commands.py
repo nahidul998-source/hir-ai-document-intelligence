@@ -3,7 +3,7 @@ from uuid import uuid4
 from app.application.commands.review_commands import (
     ReviewCommandHandler, SaveDraftFieldCommand, ApproveDocumentCommand
 )
-from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField
+from app.infrastructure.database.models import ReviewSession, ReviewField
 
 class MockReviewRepository:
     def __init__(self):

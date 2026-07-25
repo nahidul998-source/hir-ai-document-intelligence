@@ -4,8 +4,8 @@ from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField, FieldCorrection
-from app.infrastructure.database.models_phase7 import LearningCorrectionRecord
+from app.infrastructure.database.models import ReviewSession, ReviewField, FieldCorrection
+from app.infrastructure.database.models import LearningCorrectionRecord
 from app.infrastructure.repositories.learning import LearningRepository
 
 logger = logging.getLogger(__name__)

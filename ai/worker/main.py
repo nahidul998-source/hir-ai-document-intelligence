@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import aio_pika
+import os
 
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
 from ai.worker.pipeline.document_processor import DocumentProcessor
@@ -14,9 +15,13 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+from app.infrastructure.adapters.storage.minio_adapter import MinIOStorageAdapter
+from datetime import datetime, timezone
+
 # Initialize global singletons
 ai_provider_manager = AIProviderManager()
 document_processor = DocumentProcessor(ai_provider_manager)
+storage_adapter = MinIOStorageAdapter()
 
 RABBITMQ_URL = settings.RABBITMQ_URL
 
@@ -43,11 +48,7 @@ async def handle_document_uploaded(message: aio_pika.IncomingMessage) -> None:
             logger.info(f"Classification Worker handling document: {document_id}")
             
             import httpx
-            from app.infrastructure.adapters.storage.minio_adapter import MinIOStorageAdapter
-            from app.core.config import settings
-            
             logger.info(f"Downloading {filename} for classification...")
-            storage_adapter = MinIOStorageAdapter()
             file_stream = await storage_adapter.download_file(
                 bucket_name=settings.MINIO_BUCKET_NAME,
                 object_name=minio_key
@@ -89,10 +90,7 @@ async def handle_document_classified(message: aio_pika.IncomingMessage) -> None:
             ai_provider = payload.get("ai_provider")
             logger.info(f"OCR Worker handling document: {document_id}")
             
-            from app.infrastructure.adapters.storage.minio_adapter import MinIOStorageAdapter
-            from app.core.config import settings
-            
-            storage_adapter = MinIOStorageAdapter()
+
             file_stream = await storage_adapter.download_file(
                 bucket_name=settings.MINIO_BUCKET_NAME,
                 object_name=minio_key
@@ -136,9 +134,10 @@ async def handle_ocr_completed(message: aio_pika.IncomingMessage) -> None:
                 )
                 
                 logger.info(f"Persisting extraction results for document: {document_id}")
+                backend_url = os.getenv("BACKEND_API_URL", "http://localhost:8002/api/v1")
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
-                        f"http://localhost:8002/api/v1/documents/{document_id}/extraction",
+                        f"{backend_url}/documents/{document_id}/extraction",
                         json={
                             "extracted_data": result.get("extracted_data"),
                             "document_type": result.get("classifier_result"),
@@ -160,7 +159,7 @@ async def start_heartbeat():
     while True:
         try:
             client = aioredis.from_url(settings.REDIS_URL, decode_responses=False)
-            await client.set("worker:heartbeat:ai_worker", datetime.utcnow().isoformat(), ex=30)
+            await client.set("worker:heartbeat:ai_worker", datetime.now(timezone.utc).isoformat(), ex=30)
             await client.close()
         except Exception as e:
             logger.warning(f"Failed to record AI Worker heartbeat: {e}")

@@ -4,7 +4,6 @@ from typing import Dict, Any
 from ai.worker.classifiers.document_classifier import DocumentType
 
 # Make sure backend is in path to import SchemaRegistry
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend")))
 from app.domain.schemas.schema_registry import schema_registry
 
 class PromptRegistry:

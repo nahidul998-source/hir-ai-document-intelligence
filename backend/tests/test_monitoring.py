@@ -49,7 +49,7 @@ async def test_health_endpoint(
     # Mock Redis client
     mock_redis = MagicMock()
     mock_redis.ping = AsyncMock()
-    mock_redis.get = AsyncMock(return_value=datetime.utcnow().isoformat().encode("utf-8"))
+    mock_redis.get = AsyncMock(return_value=datetime.now(timezone.utc).isoformat().encode("utf-8"))
     mock_redis.close = AsyncMock()
     mock_redis_from_url.return_value = mock_redis
     

@@ -5,8 +5,6 @@ import json
 import os
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.infrastructure.adapters.storage.minio_adapter import MinIOStorageAdapter
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager

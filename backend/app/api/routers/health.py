@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from typing import Dict, Any
 
-router = APIRouter(prefix="/health", tags=["Health & Readiness"])
+router = APIRouter(tags=["Health & Readiness"])
 
 @router.get("/")
 async def health_check() -> Dict[str, Any]:

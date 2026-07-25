@@ -1,9 +1,13 @@
+import json
 from pydantic import BaseModel
 from typing import Optional, Any
 from uuid import UUID
 from datetime import datetime
+
 from app.infrastructure.repositories.reviews import ReviewRepository
-from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField, FieldCorrection, ReviewHistory
+from app.infrastructure.database.models import ReviewSession, ReviewField, FieldCorrection, ReviewHistory
+from app.infrastructure.events.publisher import RabbitMQEventPublisher
+from app.domain.services.erp.payload_builder import ERPPayloadBuilder
 
 class StartReviewCommand(BaseModel):
     document_id: UUID
@@ -25,38 +29,32 @@ class ApproveDocumentCommand(BaseModel):
     user_id: UUID
 
 class ReviewCommandHandler:
-    def __init__(self, repo: ReviewRepository):
+    def __init__(self, repo: ReviewRepository, publisher: RabbitMQEventPublisher):
         self.repo = repo
+        self.publisher = publisher
+
+    def _parse_field_value(self, val_to_use: Any) -> Any:
+        if isinstance(val_to_use, str):
+            try:
+                return json.loads(val_to_use)
+            except json.JSONDecodeError:
+                pass
+        return val_to_use
 
     async def get_active_session(self, document_id: UUID):
         session = await self.repo.get_session_by_document(document_id)
         if not session:
             return None
             
-        # Get document to get its type
-        from sqlalchemy.future import select
-        from app.infrastructure.database.models import Document
-        doc = None
-        if hasattr(self.repo, "db") and self.repo.db:
-            stmt = select(Document).where(Document.id == document_id)
-            res = await self.repo.db.execute(stmt)
-            doc = res.scalars().first()
-        doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
-        
+        doc_type = await self.repo.get_document_type(document_id)
         fields = await self.repo.get_fields(session.id)
         
-        import json
         fields_data = {}
         highlights = []
         for f in fields:
             val_to_use = f.edited_value if f.edited_value is not None else f.original_value
-            if val_to_use and isinstance(val_to_use, str) and (val_to_use.startswith('[') or val_to_use.startswith('{')):
-                try:
-                    fields_data[f.field_name] = json.loads(val_to_use)
-                except json.JSONDecodeError:
-                    fields_data[f.field_name] = val_to_use
-            else:
-                fields_data[f.field_name] = val_to_use
+            fields_data[f.field_name] = self._parse_field_value(val_to_use)
+            
             if f.bounding_box and isinstance(f.bounding_box, list) and len(f.bounding_box) == 4:
                 highlights.append({
                     "id": str(f.id),
@@ -77,23 +75,13 @@ class ReviewCommandHandler:
         }
 
     async def handle_start_review(self, cmd: StartReviewCommand):
-        # Prevent starting if already exists
         existing = await self.repo.get_session_by_document(cmd.document_id)
         if existing:
             return {"session_id": str(existing.id)}
             
-        from sqlalchemy.future import select
-        from app.infrastructure.database.models_phase2 import DocumentExtraction
-        
-        extraction_id = cmd.document_id
-        if hasattr(self.repo, "db") and self.repo.db:
-            stmt = select(DocumentExtraction).where(DocumentExtraction.document_id == cmd.document_id).order_by(DocumentExtraction.created_at.desc())
-            res = await self.repo.db.execute(stmt)
-            extraction = res.scalars().first()
-            if extraction:
-                extraction_id = extraction.id
-            else:
-                raise ValueError("Cannot start review session: Document extraction has not completed yet.")
+        extraction_id = await self.repo.get_latest_extraction_id(cmd.document_id)
+        if not extraction_id:
+            raise ValueError("Cannot start review session: Document extraction has not completed yet.")
 
         session = ReviewSession(
             document_id=cmd.document_id,
@@ -108,65 +96,54 @@ class ReviewCommandHandler:
         if not field:
             raise ValueError("Field not found")
 
-        # Create correction log
+        if cmd.edited_value is None:
+            str_value = None
+        elif isinstance(cmd.edited_value, (dict, list)):
+            str_value = json.dumps(cmd.edited_value)
+        else:
+            str_value = str(cmd.edited_value)
+
         correction = FieldCorrection(
             field_id=field.id,
             previous_value=field.edited_value or field.original_value,
-            new_value=cmd.edited_value,
+            new_value=str_value,
             reviewer_id=cmd.user_id
         )
         await self.repo.log_correction(correction)
         
-        field.edited_value = cmd.edited_value
+        field.edited_value = str_value
         await self.repo.save_field(field)
         return {"status": "draft_saved", "field": cmd.field_name}
 
     async def handle_approve_field(self, cmd: ApproveFieldCommand):
         field = await self.repo.get_field(cmd.session_id, cmd.field_name)
+        if not field:
+            raise ValueError("Field not found")
         field.validation_status = "valid"
         await self.repo.save_field(field)
         return {"status": "field_approved"}
 
     async def handle_approve_document(self, cmd: ApproveDocumentCommand):
         session = await self.repo.get_session_by_id(cmd.session_id)
+        if not session:
+            raise ValueError("Session not found")
         session.status = "approved"
         await self.repo.save_session(session)
         
-        # Get fields to construct payload
         fields = await self.repo.get_fields(cmd.session_id)
-        import json
         approved_data = {}
         for f in fields:
             val_to_use = f.edited_value if f.edited_value is not None else f.original_value
-            if val_to_use and isinstance(val_to_use, str) and (val_to_use.startswith('[') or val_to_use.startswith('{')):
-                try:
-                    approved_data[f.field_name] = json.loads(val_to_use)
-                except json.JSONDecodeError:
-                    approved_data[f.field_name] = val_to_use
-            else:
-                approved_data[f.field_name] = val_to_use
+            approved_data[f.field_name] = self._parse_field_value(val_to_use)
         
-        # Event dispatch via ERPPayloadBuilder
-        from app.domain.services.erp.payload_builder import ERPPayloadBuilder
-        
-        # Get document type for builder
-        from sqlalchemy.future import select
-        from app.infrastructure.database.models import Document
-        doc = None
-        if hasattr(self.repo, "db") and self.repo.db:
-            stmt = select(Document).where(Document.id == session.document_id)
-            res = await self.repo.db.execute(stmt)
-            doc = res.scalars().first()
-        doc_type = getattr(doc, "document_type", "tech_pack") if doc else "tech_pack"
+        doc_type = await self.repo.get_document_type(session.document_id)
         
         erp_payload = ERPPayloadBuilder.build_payload(doc_type, approved_data)
         erp_payload["session_id"] = str(session.id)
         erp_payload["document_id"] = str(session.document_id)
         erp_payload["approved_by"] = str(cmd.user_id)
         
-        from app.infrastructure.events.publisher import RabbitMQEventPublisher
-        publisher = RabbitMQEventPublisher()
-        await publisher.publish_event(
+        await self.publisher.publish_event(
             routing_key="document.approved",
             payload=erp_payload
         )

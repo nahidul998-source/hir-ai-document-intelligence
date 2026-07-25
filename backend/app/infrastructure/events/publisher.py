@@ -39,8 +39,12 @@ class RabbitMQEventPublisher:
 
     async def publish_event(self, routing_key: str, payload: dict) -> None:
         """Publishes an event to RabbitMQ."""
-        if not self.channel:
+        if not self.connection or self.connection.is_closed or not self.channel or self.channel.is_closed:
             await self.connect()
+
+        if not self.channel or self.channel.is_closed:
+            logger.error("Failed to establish RabbitMQ channel.")
+            raise ConnectionError("RabbitMQ channel not available")
 
         try:
             body = json.dumps(payload).encode("utf-8")

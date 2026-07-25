@@ -6,9 +6,9 @@ from datetime import datetime, timedelta
 
 from app.api.deps import get_db, get_current_user
 from app.infrastructure.database.models import User, Document
-from app.infrastructure.database.models_phase3 import ReviewField
+from app.infrastructure.database.models import ReviewField
 
-router = APIRouter(prefix="/evaluation", tags=["Evaluation"])
+router = APIRouter(tags=["Evaluation"])
 
 @router.get("/metrics")
 async def get_evaluation_metrics(
@@ -20,7 +20,7 @@ async def get_evaluation_metrics(
     Returns AI vs Human agreement metrics, hallucination proxy (rejections),
     and average review time.
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     
     # Analyze ReviewFields to determine agreement
     query = select(ReviewField.status, func.count(ReviewField.id)).where(

@@ -14,7 +14,7 @@ export const SchemaRenderer = React.memo(({ schema }: { schema: DocumentSchema }
                     </h3>
                     <div className="space-y-4">
                         {mod.fields.map((field: FieldSchema) => {
-                            const Widget = getWidget(field.ui.ui_widget);
+                            const Widget = getWidget(field.ui.widget || 'text');
                             return <Widget key={field.name} fieldSchema={field} />;
                         })}
                     </div>

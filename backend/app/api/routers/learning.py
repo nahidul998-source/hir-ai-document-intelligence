@@ -17,7 +17,7 @@ from app.application.services.learning.confidence_analytics import ConfidenceAna
 from app.application.services.learning.reviewer_analytics import ReviewerAnalytics
 from app.application.services.learning.quality_reports import ExtractionQualityReports
 
-router = APIRouter(prefix="/learning", tags=["Continuous Learning Engine"])
+router = APIRouter(tags=["Continuous Learning Engine"])
 
 
 @router.get("/corrections", tags=["Continuous Learning Engine"])

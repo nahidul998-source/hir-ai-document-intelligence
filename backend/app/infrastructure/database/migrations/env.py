@@ -16,9 +16,9 @@ if config.config_file_name is not None:
 # Import models and Base target_metadata
 from app.infrastructure.database.models import Base
 # Import all other model modules to ensure they register on Base.metadata
-import app.infrastructure.database.models_master_data
-import app.infrastructure.database.models_phase2
-import app.infrastructure.database.models_phase3
+import app.infrastructure.database.models
+import app.infrastructure.database.models
+import app.infrastructure.database.models
 target_metadata = Base.metadata
 
 from app.core.config import settings

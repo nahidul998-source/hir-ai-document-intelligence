@@ -3,7 +3,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models_phase7 import PromptOptimizationRecord, LearningCorrectionRecord
+from app.infrastructure.database.models import PromptOptimizationRecord, LearningCorrectionRecord
 from app.infrastructure.repositories.learning import LearningRepository
 
 logger = logging.getLogger(__name__)

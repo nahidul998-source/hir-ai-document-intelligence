@@ -2,7 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models_phase8 import FeatureFlag, ValidationRule, SystemConfig
+from app.infrastructure.database.models import FeatureFlag, ValidationRule, SystemConfig
 from app.infrastructure.repositories.admin import AdminRepository
 
 logger = logging.getLogger(__name__)

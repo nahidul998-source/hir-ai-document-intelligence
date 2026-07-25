@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from typing import Dict, Any, List
 from pydantic import BaseModel
+from app.api.deps import get_current_user
+from app.infrastructure.database.models import User
+import uuid
 
-router = APIRouter(prefix="/rag", tags=["RAG & Knowledge Base"])
+router = APIRouter(tags=["RAG & Knowledge Base"])
 
 class RAGQueryRequest(BaseModel):
     query: str
@@ -16,35 +19,23 @@ class IndexDocumentRequest(BaseModel):
     metadata: Dict[str, Any] = None
 
 @router.post("/query")
-async def execute_rag_query(request: RAGQueryRequest):
+async def execute_rag_query(request: RAGQueryRequest, current_user: User = Depends(get_current_user)):
     """
     Execute a context-augmented RAG query using the hybrid search engine.
     Ensures strict tenant isolation.
     """
-    # In a real app, this would use dependency injection for the services
-    # e.g., service = Depends(get_rag_query_service)
-    return {
-        "answer": "This is a placeholder answer.",
-        "citations": [],
-        "metrics": {"chunks_retrieved": 0, "llm_latency_ms": 0}
-    }
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="RAG query not implemented yet")
 
 @router.post("/index-document")
-async def index_document(request: IndexDocumentRequest, background_tasks: BackgroundTasks):
+async def index_document(request: IndexDocumentRequest, background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user)):
     """
     Triggers an asynchronous job to chunk and embed a document.
     """
-    # background_tasks.add_task(embedding_worker.process_document_event, request.dict())
-    return {"message": "Document indexing job queued.", "document_id": request.document_id}
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Document indexing not implemented yet")
     
 @router.get("/analytics")
-async def get_rag_analytics(tenant_id: str):
+async def get_rag_analytics(tenant_id: str, current_user: User = Depends(get_current_user)):
     """
     Retrieve search query volume, latency, and retrieval accuracy metrics.
     """
-    return {
-        "tenant_id": tenant_id,
-        "total_queries": 1520,
-        "average_latency_ms": 240,
-        "top_keywords": ["tech pack", "compliance", "tariff"]
-    }
+    raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="RAG analytics not implemented yet")

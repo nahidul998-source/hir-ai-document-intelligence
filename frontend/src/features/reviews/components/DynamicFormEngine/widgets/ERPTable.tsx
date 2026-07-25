@@ -24,7 +24,7 @@ export const ERPTable = React.memo(({ fieldSchema }: { fieldSchema: FieldSchema 
         }
     }, [fields.length, append]);
 
-    const columnHelper = createColumnHelper<Record<string, string>>();
+    const columnHelper = createColumnHelper<any>();
 
     const columns = useMemo(() => {
         if (!items || !items.properties) return [];

@@ -6,7 +6,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.infrastructure.database.models_phase7 import (
+from app.infrastructure.database.models import (
     LearningCorrectionRecord,
     LearningDataset,
     LearningDatasetItem

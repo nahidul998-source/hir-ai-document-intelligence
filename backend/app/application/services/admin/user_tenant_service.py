@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.infrastructure.database.models import User, Role
-from app.infrastructure.database.models_phase8 import Tenant
+from app.infrastructure.database.models import Tenant
 from app.infrastructure.repositories.admin import AdminRepository
 
 logger = logging.getLogger(__name__)

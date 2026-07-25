@@ -5,9 +5,9 @@ from sqlalchemy import select, func, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import Document, AuditLog
-from app.infrastructure.database.models_phase7 import AIFeedbackMetric, LearningCorrectionRecord
-from app.infrastructure.database.models_phase8 import Tenant
-from app.infrastructure.database.models_phase9 import AnalyticsSnapshot, SLAPolicy
+from app.infrastructure.database.models import AIFeedbackMetric, LearningCorrectionRecord
+from app.infrastructure.database.models import Tenant
+from app.infrastructure.database.models import AnalyticsSnapshot, SLAPolicy
 
 
 class AnalyticsRepository:

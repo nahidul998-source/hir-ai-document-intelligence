@@ -6,7 +6,7 @@ from datetime import datetime
 
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
 from app.database.session import async_session_maker
-from app.infrastructure.database.models_ai_providers import AIProviderRoutingRule
+from app.infrastructure.database.models import AIProviderRoutingRule
 from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
@@ -102,7 +102,7 @@ class AIOrchestrator:
 
             # Try generating
             retry_count = 0
-            start_time = datetime.utcnow()
+            start_time = datetime.now(timezone.utc)
             
             logger.info(
                 f"[Orchestrator] Request {request_id} (Trace: {trace_id}) routing to '{provider_key}' "
@@ -114,7 +114,7 @@ class AIOrchestrator:
                 result = await provider.generate_json(prompt, schema, system_prompt)
                 
                 # Success metrics logging
-                latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                 self.manager.update_metrics(
                     key=provider_key,
                     latency_ms=latency_ms
@@ -134,7 +134,7 @@ class AIOrchestrator:
                 }
 
             except Exception as e:
-                latency_ms = (datetime.utcnow() - start_time).total_seconds() * 1000
+                latency_ms = (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
                 is_timeout = isinstance(e, asyncio.TimeoutError)
                 
                 logger.warning(

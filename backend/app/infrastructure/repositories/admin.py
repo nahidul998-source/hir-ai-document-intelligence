@@ -5,7 +5,7 @@ from sqlalchemy import select, func, desc, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import User, Role, AuditLog
-from app.infrastructure.database.models_phase8 import (
+from app.infrastructure.database.models import (
     Tenant,
     ApiKey,
     FeatureFlag,

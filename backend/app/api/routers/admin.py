@@ -1,6 +1,7 @@
 import uuid
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, Query, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.session import get_db
@@ -12,7 +13,41 @@ from app.application.services.admin.user_tenant_service import UserTenantService
 from app.application.services.admin.system_config_service import SystemConfigService
 from app.application.services.admin.ops_management_service import OpsManagementService
 
-router = APIRouter(prefix="/admin", tags=["Enterprise Administration"])
+router = APIRouter(tags=["Enterprise Administration"])
+
+class CreateRoleRequest(BaseModel):
+    name: str
+    permissions: Dict[str, Any] = {}
+
+class CreateTenantRequest(BaseModel):
+    name: str
+    code: str
+    max_users: int = 50
+    storage_quota_gb: float = 100.0
+    settings: Optional[Dict[str, Any]] = None
+
+class FeatureFlagRequest(BaseModel):
+    key: str
+    is_enabled: bool
+    description: Optional[str] = None
+
+class ValidationRuleRequest(BaseModel):
+    field_name: str
+    rule_type: str
+    constraint_value: str
+    error_message: str
+    is_enabled: bool = True
+
+class SystemConfigRequest(BaseModel):
+    key: str
+    value: Any
+    category: str = "general"
+    description: Optional[str] = None
+
+class ApiKeyRequest(BaseModel):
+    name: str
+    scopes: Optional[List[str]] = None
+    expire_days: int = 90
 
 
 # User & Tenant Management
@@ -58,13 +93,13 @@ async def list_admin_roles(
 
 @router.post("/roles", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def create_admin_role(
-    payload: Dict[str, Any],
+    payload: CreateRoleRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Creates a new RBAC role."""
     service = UserTenantService(db)
-    role = await service.create_role(name=payload["name"], permissions=payload.get("permissions", {}))
+    role = await service.create_role(name=payload.name, permissions=payload.permissions)
     return {"id": str(role.id), "name": role.name}
 
 
@@ -93,18 +128,18 @@ async def list_tenants(
 
 @router.post("/tenants", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def create_tenant(
-    payload: Dict[str, Any],
+    payload: CreateTenantRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Registers a new multi-tenant organization."""
     service = UserTenantService(db)
     tenant = await service.create_tenant(
-        name=payload["name"],
-        code=payload["code"],
-        max_users=int(payload.get("max_users", 50)),
-        storage_quota_gb=float(payload.get("storage_quota_gb", 100.0)),
-        settings=payload.get("settings")
+        name=payload.name,
+        code=payload.code,
+        max_users=payload.max_users,
+        storage_quota_gb=payload.storage_quota_gb,
+        settings=payload.settings
     )
     return {"id": str(tenant.id), "name": tenant.name, "code": tenant.code}
 
@@ -131,16 +166,16 @@ async def list_feature_flags(
 
 @router.post("/feature-flags", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def set_feature_flag(
-    payload: Dict[str, Any],
+    payload: FeatureFlagRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Toggles or creates a dynamic feature flag."""
     service = SystemConfigService(db)
     flag = await service.set_feature_flag(
-        key=payload["key"],
-        is_enabled=bool(payload["is_enabled"]),
-        description=payload.get("description")
+        key=payload.key,
+        is_enabled=payload.is_enabled,
+        description=payload.description
     )
     return {"id": str(flag.id), "key": flag.key, "is_enabled": flag.is_enabled}
 
@@ -168,18 +203,18 @@ async def list_validation_rules(
 
 @router.post("/validation-rules", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def save_validation_rule(
-    payload: Dict[str, Any],
+    payload: ValidationRuleRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Saves a custom field extraction validation rule."""
     service = SystemConfigService(db)
     rule = await service.save_validation_rule(
-        field_name=payload["field_name"],
-        rule_type=payload["rule_type"],
-        constraint_value=payload["constraint_value"],
-        error_message=payload["error_message"],
-        is_enabled=bool(payload.get("is_enabled", True))
+        field_name=payload.field_name,
+        rule_type=payload.rule_type,
+        constraint_value=payload.constraint_value,
+        error_message=payload.error_message,
+        is_enabled=payload.is_enabled
     )
     return {"id": str(rule.id), "field_name": rule.field_name}
 
@@ -206,17 +241,17 @@ async def list_system_configs(
 
 @router.post("/system-config", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def set_system_config(
-    payload: Dict[str, Any],
+    payload: SystemConfigRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Sets a global system configuration setting."""
     service = SystemConfigService(db)
     config = await service.set_system_setting(
-        key=payload["key"],
-        value=str(payload["value"]),
-        category=payload.get("category", "general"),
-        description=payload.get("description")
+        key=payload.key,
+        value=str(payload.value),
+        category=payload.category,
+        description=payload.description
     )
     return {"id": str(config.id), "key": config.key, "value": config.value}
 
@@ -245,17 +280,17 @@ async def list_api_keys(
 
 @router.post("/api-keys", tags=["Enterprise Administration"], dependencies=[Depends(RequirePermission(Permissions.ADMIN_WRITE))])
 async def create_api_key(
-    payload: Dict[str, Any],
+    payload: ApiKeyRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Generates a new external integration API Key."""
     ops = OpsManagementService(db)
     return await ops.create_api_key(
-        name=payload["name"],
+        name=payload.name,
         user_id=current_user.id,
-        scopes=payload.get("scopes"),
-        expire_days=int(payload.get("expire_days", 90))
+        scopes=payload.scopes,
+        expire_days=payload.expire_days
     )
 
 

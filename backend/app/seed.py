@@ -4,10 +4,10 @@ from passlib.context import CryptContext
 
 from app.database.session import engine, async_session_maker
 from app.infrastructure.database.models import Base, User, Role
-import app.infrastructure.database.models_master_data
-import app.infrastructure.database.models_phase2
-import app.infrastructure.database.models_phase3
-import app.infrastructure.database.models_ai_providers
+import app.infrastructure.database.models
+import app.infrastructure.database.models
+import app.infrastructure.database.models
+import app.infrastructure.database.models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -50,7 +50,7 @@ async def seed():
             print("Admin user already exists.")
 
         # 3. Seed AI Providers & Routing Rules
-        from app.infrastructure.database.models_ai_providers import AIProviderConfig, AIProviderRoutingRule
+        from app.infrastructure.database.models import AIProviderConfig, AIProviderRoutingRule
         import yaml
         import os
         

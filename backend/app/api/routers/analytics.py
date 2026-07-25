@@ -11,7 +11,7 @@ from app.application.services.analytics.metrics_service import MetricsAggregatio
 from app.application.services.analytics.ops_bi_service import OperationalBIService
 from app.application.services.analytics.export_service import ReportExportService
 
-router = APIRouter(prefix="/analytics", tags=["Analytics & BI Engine"])
+router = APIRouter(tags=["Analytics & BI Engine"])
 
 
 @router.get("/overview", tags=["Analytics & BI Engine"], dependencies=[Depends(RequirePermission(Permissions.REVIEW_READ))])

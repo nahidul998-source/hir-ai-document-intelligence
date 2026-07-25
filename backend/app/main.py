@@ -24,8 +24,8 @@ class JSONFormatter(logging.Formatter):
         # Inject standard telemetry/alert context properties if present
         if hasattr(record, "service"):
             log_data["service"] = record.service
-        if hasattr(record, "level") and isinstance(record.level, str):
-            log_data["alert_level"] = record.level
+        if hasattr(record, "alert_level"):
+            log_data["alert_level"] = record.alert_level
         if hasattr(record, "details"):
             log_data["details"] = record.details
         if record.exc_info:
@@ -43,7 +43,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-from app.api.routers.ai_providers import ai_manager
+from app.api.deps import _ai_provider_manager as ai_manager
 from app.application.services.ai.health_monitor import AIProviderHealthMonitor
 
 health_monitor = AIProviderHealthMonitor(ai_manager, interval_seconds=60)
@@ -90,7 +90,7 @@ app.add_middleware(PrometheusMiddleware)
 # Setup CORS middleware for web frontend interaction
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Restrict to frontend origin in production config
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -100,17 +100,17 @@ app.add_middleware(
 app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
 app.include_router(projects.router, prefix=f"{settings.API_V1_STR}/projects", tags=["Projects"])
 app.include_router(documents.router, prefix=f"{settings.API_V1_STR}/documents", tags=["Documents"])
-app.include_router(schemas.router)
-app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}", tags=["Monitoring"])
-app.include_router(learning.router, prefix=f"{settings.API_V1_STR}", tags=["Continuous Learning Engine"])
-app.include_router(admin.router, prefix=f"{settings.API_V1_STR}", tags=["Enterprise Administration"])
-app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}", tags=["Analytics & BI Engine"])
-app.include_router(rag.router, prefix=f"{settings.API_V1_STR}", tags=["RAG & Knowledge Base"])
-app.include_router(health.router, prefix=f"{settings.API_V1_STR}", tags=["Health & Readiness"])
-app.include_router(audit.router, prefix=f"{settings.API_V1_STR}", tags=["Security & Audit"])
-app.include_router(evaluation.router, prefix=f"{settings.API_V1_STR}")
-app.include_router(ai_providers.router)
-app.include_router(reviews.router)
+app.include_router(schemas.router, prefix=f"{settings.API_V1_STR}/schemas")
+app.include_router(monitoring.router, prefix=f"{settings.API_V1_STR}/monitoring", tags=["Monitoring"])
+app.include_router(learning.router, prefix=f"{settings.API_V1_STR}/learning", tags=["Continuous Learning Engine"])
+app.include_router(admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["Enterprise Administration"])
+app.include_router(analytics.router, prefix=f"{settings.API_V1_STR}/analytics", tags=["Analytics & BI Engine"])
+app.include_router(rag.router, prefix=f"{settings.API_V1_STR}/rag", tags=["RAG & Knowledge Base"])
+app.include_router(health.router, prefix=f"{settings.API_V1_STR}/health", tags=["Health & Readiness"])
+app.include_router(audit.router, prefix=f"{settings.API_V1_STR}/audit", tags=["Security & Audit"])
+app.include_router(evaluation.router, prefix=f"{settings.API_V1_STR}/evaluation")
+app.include_router(ai_providers.router, prefix=f"{settings.API_V1_STR}/ai-providers")
+app.include_router(reviews.router, prefix=f"{settings.API_V1_STR}/reviews")
 
 @app.get("/health", tags=["Monitoring"])
 async def health_check():

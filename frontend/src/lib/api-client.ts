@@ -63,9 +63,10 @@ apiClient.interceptors.response.use(
             apiClient.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
             processQueue(null, newToken);
             
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return apiClient(originalRequest);
         } catch (refreshError) {
-            processQueue(refreshError, null);
+            processQueue(refreshError as Error, null);
             import('../stores/authStore').then(({ useAuthStore }) => {
                 useAuthStore.getState().logout();
             });

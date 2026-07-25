@@ -3,7 +3,7 @@ from typing import Dict, List
 from app.domain.schemas.schema_registry import schema_registry
 from app.domain.schemas.document_schema import DocumentTypeSchema
 
-router = APIRouter(prefix="/api/v1/schemas", tags=["Schemas"])
+router = APIRouter(tags=["Schemas"])
 
 @router.get("/documents", response_model=Dict[str, DocumentTypeSchema])
 async def get_all_document_schemas():

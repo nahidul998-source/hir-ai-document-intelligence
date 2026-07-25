@@ -57,7 +57,7 @@ def RequirePermission(required_permission: str) -> Callable:
         if not user_permissions and getattr(current_user, "role", None) and getattr(current_user.role, "name", None) in DEFAULT_ROLES:
             user_permissions = DEFAULT_ROLES[current_user.role.name]
         elif not user_permissions:
-            user_permissions = DEFAULT_ROLES["Admin"]
+            user_permissions = []
 
         if required_permission not in user_permissions:
             raise HTTPException(

@@ -13,7 +13,6 @@ from ai.worker.metrics.tracker import MetricsTracker
 
 # The AI worker needs to import AIProviderManager from the backend. 
 # PYTHONPATH must be set appropriately when running.
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "backend")))
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
 from app.application.services.ai.orchestrator import AIOrchestrator
 from app.domain.services.validation.pipeline import ValidationPipeline

@@ -5,12 +5,11 @@ from sqlalchemy import select, update
 
 from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
 from app.database.session import async_session_maker
-from app.infrastructure.database.models_ai_providers import AIProviderConfig, AIProviderRoutingRule
+from app.infrastructure.database.models import AIProviderConfig, AIProviderRoutingRule
+from app.infrastructure.repositories.ai_providers import AIProviderRepository
+from app.api.deps import _ai_provider_manager as ai_manager
 
-router = APIRouter(prefix="/api/v1/ai-providers", tags=["AI Providers"])
-
-# Global manager instance preserving in-memory metrics
-ai_manager = AIProviderManager()
+router = APIRouter(tags=["AI Providers"])
 
 class PriorityUpdateRequest(BaseModel):
     priority: List[str]
@@ -25,10 +24,8 @@ async def list_providers():
     await ai_manager.initialize()
     
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(AIProviderConfig).order_by(AIProviderConfig.priority_index.asc())
-        )
-        db_configs = result.scalars().all()
+        repo = AIProviderRepository(session)
+        db_configs = await repo.get_all_configs()
         
     result_list = []
     priority_list = []
@@ -75,7 +72,7 @@ async def test_connection(key: str):
     # Update in-memory status
     metrics = ai_manager.metrics[key]
     from datetime import datetime
-    metrics["last_health_check"] = datetime.utcnow().isoformat()
+    metrics["last_health_check"] = datetime.now(timezone.utc).isoformat()
     metrics["status"] = "Healthy" if is_healthy else "Unhealthy"
     
     return {"healthy": is_healthy}
@@ -87,10 +84,8 @@ async def toggle_provider(key: str):
     await ai_manager.initialize()
     
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(AIProviderConfig).where(AIProviderConfig.key == key)
-        )
-        p_cfg = result.scalar_one_or_none()
+        repo = AIProviderRepository(session)
+        p_cfg = await repo.get_config_by_key(key)
         if not p_cfg:
             raise HTTPException(status_code=404, detail="Provider not found")
             
@@ -108,12 +103,9 @@ async def update_priority(req: PriorityUpdateRequest):
     await ai_manager.initialize()
     
     async with async_session_maker() as session:
+        repo = AIProviderRepository(session)
         for idx, key in enumerate(req.priority):
-            await session.execute(
-                update(AIProviderConfig)
-                .where(AIProviderConfig.key == key)
-                .values(priority_index=idx)
-            )
+            await repo.update_priority(key, idx)
         await session.commit()
         
     await ai_manager.reload_config()
@@ -124,8 +116,8 @@ async def update_priority(req: PriorityUpdateRequest):
 async def get_routing_rules():
     """Retrieve document routing configurations."""
     async with async_session_maker() as session:
-        result = await session.execute(select(AIProviderRoutingRule))
-        rules = result.scalars().all()
+        repo = AIProviderRepository(session)
+        rules = await repo.get_all_routing_rules()
         
     return [
         {
@@ -140,10 +132,8 @@ async def get_routing_rules():
 async def update_routing_rule(req: RoutingUpdateRequest):
     """Create or update a routing rule for a document type."""
     async with async_session_maker() as session:
-        result = await session.execute(
-            select(AIProviderRoutingRule).where(AIProviderRoutingRule.document_type == req.document_type)
-        )
-        rule = result.scalar_one_or_none()
+        repo = AIProviderRepository(session)
+        rule = await repo.get_routing_rule_by_doc_type(req.document_type)
         if rule:
             rule.provider_keys = req.provider_keys
         else:
@@ -151,7 +141,7 @@ async def update_routing_rule(req: RoutingUpdateRequest):
                 document_type=req.document_type,
                 provider_keys=req.provider_keys
             )
-            session.add(rule)
+            repo.add_routing_rule(rule)
         await session.commit()
         
     return {"status": "success", "document_type": req.document_type, "provider_keys": req.provider_keys}

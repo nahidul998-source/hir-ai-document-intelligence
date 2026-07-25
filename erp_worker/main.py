@@ -6,10 +6,9 @@ import sys
 import os
 
 # Ensure backend can be imported
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
 
 from adapters.webhook_erp_adapter import WebhookERPAdapter
-from app.core.settings import settings
+from app.core.config import settings
 from app.infrastructure.events.queue_topology import setup_queue_topology
 
 logging.basicConfig(
@@ -18,7 +17,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-RABBITMQ_URL = settings.queue.url
+RABBITMQ_URL = settings.RABBITMQ_URL
 
 erp_adapter = WebhookERPAdapter()
 

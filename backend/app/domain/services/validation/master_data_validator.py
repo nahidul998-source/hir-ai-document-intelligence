@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from sqlalchemy import or_
 
 # Note: In production we'd use pg_trgm, but we'll use a basic ILIKE search here for compatibility without requiring postgres extension setup.
-from app.infrastructure.database.models_master_data import MasterBuyer, MasterSupplier, MasterFabric, MasterUOM
+from app.infrastructure.database.models import MasterBuyer, MasterSupplier, MasterFabric, MasterUOM
 
 logger = logging.getLogger(__name__)
 

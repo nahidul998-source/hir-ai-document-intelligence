@@ -35,7 +35,7 @@ mock_doc_service.upload_document = AsyncMock(return_value=mock_doc)
 
 from app.database.session import get_db
 from app.infrastructure.database.models import DocumentVersion
-from app.infrastructure.database.models_phase3 import ReviewSession, ReviewField
+from app.infrastructure.database.models import ReviewSession, ReviewField
 
 mock_version = MagicMock(id=uuid4(), document_id=test_doc_id, version_number=1, minio_key="test_key")
 

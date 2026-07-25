@@ -6,7 +6,7 @@ from uuid import uuid4
 from app.main import app
 from app.core.config import settings
 from app.infrastructure.database.models import User, Role
-from app.infrastructure.database.models_phase8 import FeatureFlag, Tenant, SystemConfig
+from app.infrastructure.database.models import FeatureFlag, Tenant, SystemConfig
 
 admin_role = Role(
     id=uuid4(),

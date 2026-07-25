@@ -101,7 +101,7 @@ class DocumentService:
 
         # Delete from Minio
         try:
-            await self.storage_adapter.client.remove_object(
+            await self.storage_adapter.delete_file(
                 settings.MINIO_BUCKET_NAME,
                 document.minio_key
             )

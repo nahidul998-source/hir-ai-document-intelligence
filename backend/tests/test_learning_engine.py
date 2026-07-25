@@ -7,7 +7,7 @@ from datetime import datetime
 from app.main import app
 from app.core.config import settings
 from app.infrastructure.database.models import User
-from app.infrastructure.database.models_phase7 import (
+from app.infrastructure.database.models import (
     LearningCorrectionRecord,
     LearningDataset,
     LearningDatasetItem,
@@ -48,7 +48,7 @@ async def test_list_correction_records_endpoint(override_auth):
         corrected_value="$1200",
         was_modified=True,
         initial_confidence=0.88,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc)
     )
 
     mock_exec_res = MagicMock()

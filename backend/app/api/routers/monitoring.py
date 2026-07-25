@@ -11,16 +11,15 @@ import aio_pika
 from datetime import datetime
 
 from app.core.config import settings
-from app.api.deps import get_db, get_current_user, get_event_publisher
+from app.api.deps import get_db, get_current_user, get_event_publisher, _ai_provider_manager as ai_provider_manager
 from app.infrastructure.database.models import User, AuditLog, Job
-from app.infrastructure.adapters.ai_provider_manager import AIProviderManager
+from app.infrastructure.repositories.monitoring import MonitoringRepository
 from app.infrastructure.monitoring.metrics import get_prometheus_metrics
 from app.infrastructure.monitoring.alerting import EventDrivenAlertingService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/monitoring")
-ai_provider_manager = AIProviderManager()
+router = APIRouter()
 
 
 async def get_worker_status() -> dict:
@@ -31,7 +30,7 @@ async def get_worker_status() -> dict:
         erp_hb = await client.get("worker:heartbeat:erp_worker")
         await client.close()
         
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         
         def evaluate(hb_bytes):
             if not hb_bytes:
@@ -167,7 +166,7 @@ async def detailed_health_check(
 
     return {
         "status": overall_status,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "services": services
     }
 
@@ -188,22 +187,8 @@ async def list_audit_logs(
     current_user: User = Depends(get_current_user)
 ):
     """Retrieves paginated structured audit logs for dashboard view."""
-    query = select(AuditLog)
-    if action:
-        query = query.where(func.lower(AuditLog.action) == action.lower())
-    
-    # Sort by created_at desc
-    query = query.order_by(desc(AuditLog.created_at))
-    
-    # Get total count
-    count_query = select(func.count()).select_from(query.subquery())
-    total_res = await db.execute(count_query)
-    total = total_res.scalar() or 0
-    
-    # Get results
-    query = query.offset(skip).limit(limit)
-    res = await db.execute(query)
-    logs = res.scalars().all()
+    repo = MonitoringRepository(db)
+    total, logs = await repo.get_audit_logs(skip, limit, action)
     
     return {
         "total": total,
@@ -228,10 +213,8 @@ async def list_documents_status(
 ):
     """Retrieves document processing status through the pipeline."""
     from app.infrastructure.database.models import Document
-    
-    query = select(Document).order_by(desc(Document.created_at)).limit(limit)
-    res = await db.execute(query)
-    documents = res.scalars().all()
+    repo = MonitoringRepository(db)
+    documents = await repo.get_recent_documents(limit)
     
     return {
         "documents": [
@@ -254,10 +237,8 @@ async def get_jobs_statistics(
     current_user: User = Depends(get_current_user)
 ):
     """Retrieves job processing counts grouped by status and a list of recent jobs."""
-    # Count by status
-    count_query = select(Job.status, func.count(Job.id)).group_by(Job.status)
-    count_res = await db.execute(count_query)
-    status_counts = {row[0]: row[1] for row in count_res.all()}
+    repo = MonitoringRepository(db)
+    status_counts = await repo.get_job_status_counts()
     
     # Fill in defaults if not present
     for status_key in ("queued", "processing", "completed", "failed"):
@@ -265,9 +246,7 @@ async def get_jobs_statistics(
             status_counts[status_key] = 0
             
     # Recent jobs
-    recent_query = select(Job).order_by(desc(Job.created_at)).limit(limit)
-    recent_res = await db.execute(recent_query)
-    recent_jobs = recent_res.scalars().all()
+    recent_jobs = await repo.get_recent_jobs(limit)
     
     return {
         "summary": status_counts,

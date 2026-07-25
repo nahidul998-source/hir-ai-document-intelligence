@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
 
-router = APIRouter(prefix="/audit", tags=["Security & Audit"])
+router = APIRouter(tags=["Security & Audit"])
 
 class AuditEvent(BaseModel):
     event_id: str
@@ -29,7 +29,7 @@ async def get_audit_trail(tenant_id: str, limit: int = 50, offset: int = 0) -> L
             user_id="user_789",
             action="LOGIN_SUCCESS",
             resource="system",
-            timestamp=datetime.utcnow(),
+            timestamp=datetime.now(timezone.utc),
             ip_address="192.168.1.1",
             metadata={"mfa_used": True}
         )

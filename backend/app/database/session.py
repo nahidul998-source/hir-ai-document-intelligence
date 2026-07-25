@@ -1,6 +1,28 @@
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.core.config import settings
+from sqlalchemy import event
+from sqlalchemy.orm import Session, with_loader_criteria
+from app.core.context import tenant_context
+from app.infrastructure.database.base_model import AuditableBase
+
+@event.listens_for(Session, "do_orm_execute")
+def _add_tenant_filter(execute_state):
+    """
+    Globally intercepts ORM executions and injects a WHERE tenant_id = ? clause
+    for any model inheriting from AuditableBase.
+    """
+    tenant_id = tenant_context.get()
+    
+    # If there's a tenant in context, apply the filter
+    if tenant_id and not execute_state.is_column_load and not execute_state.is_relationship_load:
+        execute_state.statement = execute_state.statement.options(
+            with_loader_criteria(
+                AuditableBase,
+                lambda cls: cls.tenant_id == tenant_id,
+                include_aliases=True
+            )
+        )
 
 # Create async engine with connection pooling config suitable for enterprise scale
 engine = create_async_engine(
