@@ -142,14 +142,14 @@ class AIProviderManager:
         if error:
             m["errors"] += 1
             m["last_error"] = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
                 "message": error
             }
             m["status"] = "Error"
             if timeout:
                 m["timeout_count"] += 1
         else:
-            m["last_successful_request"] = datetime.now(timezone.utc).isoformat()
+            m["last_successful_request"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             m["status"] = "Healthy"
             if latency_ms is not None:
                 m["latencies"].append(latency_ms)
@@ -181,7 +181,7 @@ class AIProviderManager:
             is_healthy = await provider.is_healthy()
             
             m = self.metrics[key]
-            m["last_health_check"] = datetime.now(timezone.utc).isoformat()
+            m["last_health_check"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             m["uptime_pings"] += 1
             if is_healthy:
                 m["status"] = "Healthy"
@@ -199,11 +199,11 @@ class AIProviderManager:
             if provider and provider.enabled:
                 if await provider.is_healthy():
                     self.metrics[provider_key]["status"] = "Healthy"
-                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).isoformat()
+                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
                     return provider
                 else:
                     self.metrics[provider_key]["status"] = "Unhealthy"
-                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).isoformat()
+                    self.metrics[provider_key]["last_health_check"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
                     
         raise RuntimeError("No healthy AI Providers are available. Fallback exhausted.")
 

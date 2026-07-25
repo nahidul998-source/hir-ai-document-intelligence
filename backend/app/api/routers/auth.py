@@ -26,7 +26,11 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     user_service: UserService = Depends(get_user_service)
 ):
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info(f"Login attempt for: {form_data.username}")
     user = await user_service.authenticate_user(form_data.username, form_data.password)
+    logger.info(f"Login result: {user}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

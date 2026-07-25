@@ -55,6 +55,7 @@ class SQLAlchemyRepository(IRepository[T], Generic[T]):
         return merged
 
     async def delete(self, id: uuid.UUID) -> None:
-        query = delete(self.model).where(self.model.id == id)
-        await self.session.execute(query)
-        await self.session.flush()
+        entity = await self.get(id)
+        if entity:
+            await self.session.delete(entity)
+            await self.session.flush()

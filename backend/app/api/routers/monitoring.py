@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 import redis.asyncio as aioredis
 import aio_pika
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.core.config import settings
 from app.api.deps import get_db, get_current_user, get_event_publisher, _ai_provider_manager as ai_provider_manager
@@ -30,7 +30,7 @@ async def get_worker_status() -> dict:
         erp_hb = await client.get("worker:heartbeat:erp_worker")
         await client.close()
         
-        now = datetime.now(timezone.utc)
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
         
         def evaluate(hb_bytes):
             if not hb_bytes:
@@ -166,7 +166,7 @@ async def detailed_health_check(
 
     return {
         "status": overall_status,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
         "services": services
     }
 
@@ -275,8 +275,10 @@ async def get_queues_monitoring(
         channel = await conn.channel()
         
         target_queues = [
-            "hir.ai_worker.processing",
-            "hir.ai_worker.dlq",
+            "hir.ai_worker_classifier.processing",
+            "hir.ai_worker_classifier.dlq",
+            "hir.ai_worker_ocr.processing",
+            "hir.ai_worker_extractor.processing",
             "hir.erp_worker.processing",
             "hir.erp_worker.dlq"
         ]

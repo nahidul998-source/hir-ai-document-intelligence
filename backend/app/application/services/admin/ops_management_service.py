@@ -3,7 +3,7 @@ import secrets
 import hashlib
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 import aio_pika
 
@@ -34,7 +34,7 @@ class OpsManagementService:
         raw_secret = f"hir_live_{secrets.token_hex(24)}"
         key_prefix = raw_secret[:12]
         hashed = hashlib.sha256(raw_secret.encode('utf-8')).hexdigest()
-        expires_at = datetime.now(timezone.utc) + timedelta(days=expire_days)
+        expires_at = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(days=expire_days)
 
         api_key = ApiKey(
             name=name,
@@ -89,7 +89,7 @@ class OpsManagementService:
             config = BackupConfig()
             config = await self.repo.save_backup_config(config)
 
-        config.last_backup_at = datetime.now(timezone.utc)
+        config.last_backup_at = datetime.now(timezone.utc).replace(tzinfo=None)
         config.last_status = "completed"
         await self.db.commit()
 

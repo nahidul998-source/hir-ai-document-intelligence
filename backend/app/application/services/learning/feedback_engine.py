@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.infrastructure.database.models import AIFeedbackMetric
@@ -62,7 +62,7 @@ class AIFeedbackEngine:
 
         # Store metric
         metric = AIFeedbackMetric(
-            time_bucket=datetime.now(timezone.utc),
+            time_bucket=datetime.now(timezone.utc).replace(tzinfo=None),
             field_name=field_name,
             total_extractions=total,
             total_corrections=total_corrections,

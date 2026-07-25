@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.main import app
 from app.core.config import settings
@@ -48,7 +48,7 @@ async def test_list_correction_records_endpoint(override_auth):
         corrected_value="$1200",
         was_modified=True,
         initial_confidence=0.88,
-        created_at=datetime.now(timezone.utc)
+        created_at=datetime.now(timezone.utc).replace(tzinfo=None)
     )
 
     mock_exec_res = MagicMock()

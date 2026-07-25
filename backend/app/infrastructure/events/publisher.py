@@ -22,11 +22,13 @@ class RabbitMQEventPublisher:
             self.channel = await self.connection.channel()
             # Declare durable exchange for domain events
             await self.channel.declare_exchange("hir.events", aio_pika.ExchangeType.TOPIC, durable=True)
-            # Declare processing queue
-            await self.channel.declare_queue("hir.document.processing", durable=True)
-            # Bind queue to exchange
-            queue = await self.channel.get_queue("hir.document.processing")
-            await queue.bind("hir.events", routing_key="document.uploaded")
+            
+            # Setup the same topology as the AI worker to ensure messages aren't lost if worker is offline
+            from app.infrastructure.events.queue_topology import setup_queue_topology
+            await setup_queue_topology(self.channel, "ai_worker_classifier", ["document.uploaded"])
+            await setup_queue_topology(self.channel, "ai_worker_ocr", ["document.classified"])
+            await setup_queue_topology(self.channel, "ai_worker_extractor", ["ocr.completed"])
+            
             logger.info("Successfully connected to RabbitMQ broker and initialized exchanges/queues.")
         except Exception as e:
             logger.warning(f"RabbitMQ connection skipped: {e}")

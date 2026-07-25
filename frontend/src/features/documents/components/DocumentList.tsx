@@ -112,6 +112,12 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewD
                       </button>
                     )}
                     <button
+                      onClick={() => window.open(`/api/v1/documents/download/${doc.id}`, '_blank')}
+                      className="px-3 py-1.5 text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors"
+                    >
+                      Preview
+                    </button>
+                    <button
                       onClick={() => onDeleteDocument?.(doc.id)}
                       className="px-3 py-1.5 text-xs font-semibold bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
                     >

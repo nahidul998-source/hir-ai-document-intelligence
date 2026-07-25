@@ -25,9 +25,11 @@ storage_adapter = MinIOStorageAdapter()
 
 RABBITMQ_URL = settings.RABBITMQ_URL
 
+global_channel = None
 
-async def publish_event(channel: aio_pika.Channel, routing_key: str, payload: dict):
-    exchange = await channel.declare_exchange("hir.events", aio_pika.ExchangeType.TOPIC, durable=True)
+async def publish_event(channel, routing_key: str, payload: dict):
+    # channel here is actually global_channel now
+    exchange = await global_channel.declare_exchange("hir.events", aio_pika.ExchangeType.TOPIC, durable=True)
     await exchange.publish(
         aio_pika.Message(
             body=json.dumps(payload).encode(),
@@ -67,7 +69,7 @@ async def handle_document_uploaded(message: aio_pika.IncomingMessage) -> None:
             classification_result = await classifier.classify(filename, first_page_text)
             
             # Emit document.classified event
-            await publish_event(message.channel, "document.classified", {
+            await publish_event(global_channel, "document.classified", {
                 "document_id": document_id,
                 "minio_key": minio_key,
                 "filename": filename,
@@ -100,7 +102,7 @@ async def handle_document_classified(message: aio_pika.IncomingMessage) -> None:
             ocr_result = await document_processor.extract_text_and_layout(filename, file_bytes)
             
             # In a real app we'd save layout to DB here. For now, pass text forward.
-            await publish_event(message.channel, "ocr.completed", {
+            await publish_event(global_channel, "ocr.completed", {
                 "document_id": document_id,
                 "document_type": doc_type,
                 "extracted_text": ocr_result["text"],
@@ -183,7 +185,9 @@ async def main() -> None:
         logger.error("Could not connect to RabbitMQ. Standalone worker exiting.")
         return
 
+    global global_channel
     channel = await connection.channel()
+    global_channel = channel
     await channel.set_qos(prefetch_count=1)
 
     # 1. Classification Worker

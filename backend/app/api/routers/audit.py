@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from typing import List, Dict, Any
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(tags=["Security & Audit"])
 
@@ -29,7 +29,7 @@ async def get_audit_trail(tenant_id: str, limit: int = 50, offset: int = 0) -> L
             user_id="user_789",
             action="LOGIN_SUCCESS",
             resource="system",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None),
             ip_address="192.168.1.1",
             metadata={"mfa_used": True}
         )

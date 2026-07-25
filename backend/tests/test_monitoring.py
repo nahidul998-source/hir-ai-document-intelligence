@@ -3,7 +3,7 @@ from httpx import AsyncClient, ASGITransport
 from fastapi import FastAPI
 from unittest.mock import AsyncMock, patch, MagicMock
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.main import app
 from app.core.config import settings
@@ -49,7 +49,7 @@ async def test_health_endpoint(
     # Mock Redis client
     mock_redis = MagicMock()
     mock_redis.ping = AsyncMock()
-    mock_redis.get = AsyncMock(return_value=datetime.now(timezone.utc).isoformat().encode("utf-8"))
+    mock_redis.get = AsyncMock(return_value=datetime.now(timezone.utc).replace(tzinfo=None).isoformat().encode("utf-8"))
     mock_redis.close = AsyncMock()
     mock_redis_from_url.return_value = mock_redis
     

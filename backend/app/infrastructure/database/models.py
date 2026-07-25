@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from sqlalchemy import String, ForeignKey, DateTime, Integer, Float, JSON, Boolean, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -61,6 +61,12 @@ class Document(AuditableBase):
     versions: Mapped[List["DocumentVersion"]] = relationship("DocumentVersion", back_populates="document", cascade="all, delete-orphan", foreign_keys="DocumentVersion.document_id")
     jobs: Mapped[List["Job"]] = relationship("Job", back_populates="document", cascade="all, delete-orphan", foreign_keys="Job.document_id")
     reviews: Mapped[List["Review"]] = relationship("Review", back_populates="document", cascade="all, delete-orphan", foreign_keys="Review.document_id")
+    extractions: Mapped[List["DocumentExtraction"]] = relationship("DocumentExtraction", cascade="all, delete-orphan", foreign_keys="DocumentExtraction.document_id")
+    pages: Mapped[List["DocumentPage"]] = relationship("DocumentPage", cascade="all, delete-orphan", foreign_keys="DocumentPage.document_id")
+    tables: Mapped[List["DocumentTable"]] = relationship("DocumentTable", cascade="all, delete-orphan", foreign_keys="DocumentTable.document_id")
+    layout_blocks: Mapped[List["DocumentLayoutBlock"]] = relationship("DocumentLayoutBlock", cascade="all, delete-orphan", foreign_keys="DocumentLayoutBlock.document_id")
+    chunks: Mapped[List["KnowledgeChunk"]] = relationship("KnowledgeChunk", cascade="all, delete-orphan", foreign_keys="KnowledgeChunk.document_id")
+    learning_records: Mapped[List["LearningCorrectionRecord"]] = relationship("LearningCorrectionRecord", cascade="all, delete-orphan", foreign_keys="LearningCorrectionRecord.document_id")
 
 
 class DocumentVersion(AuditableBase):
@@ -102,7 +108,7 @@ class Review(AuditableBase):
     comments: Mapped[Optional[str]] = mapped_column(Text)
     modifications: Mapped[dict] = mapped_column(JSON, default=dict)
     status: Mapped[str] = mapped_column(String(50), nullable=False)
-    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+    reviewed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None))
 
     document: Mapped["Document"] = relationship("Document", back_populates="reviews", foreign_keys=[document_id])
     reviewer: Mapped["User"] = relationship("User", back_populates="reviews", foreign_keys=[reviewer_id])
@@ -490,8 +496,8 @@ class Tenant(Base):
     __tablename__ = "tenants"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=False)
     deleted_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_by: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)
     updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("users.id"), nullable=True)

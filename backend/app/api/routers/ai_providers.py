@@ -1,3 +1,4 @@
+from datetime import timezone
 from fastapi import APIRouter, HTTPException, Depends
 from typing import Dict, Any, List
 from pydantic import BaseModel
@@ -72,7 +73,7 @@ async def test_connection(key: str):
     # Update in-memory status
     metrics = ai_manager.metrics[key]
     from datetime import datetime
-    metrics["last_health_check"] = datetime.now(timezone.utc).isoformat()
+    metrics["last_health_check"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     metrics["status"] = "Healthy" if is_healthy else "Unhealthy"
     
     return {"healthy": is_healthy}
