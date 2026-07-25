@@ -32,6 +32,19 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewD
     };
     fetchProviders();
   }, []);
+
+  const handlePreview = async (docId: string) => {
+    try {
+      const response = await apiClient.get(`/documents/download/${docId}`, {
+        responseType: 'blob'
+      });
+      const blobUrl = URL.createObjectURL(response.data);
+      window.open(blobUrl, '_blank');
+    } catch (error) {
+      console.error("Failed to preview document:", error);
+      alert("Failed to load document preview.");
+    }
+  };
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20';
@@ -112,7 +125,7 @@ export const DocumentList: React.FC<DocumentListProps> = ({ documents, onReviewD
                       </button>
                     )}
                     <button
-                      onClick={() => window.open(`/api/v1/documents/download/${doc.id}`, '_blank')}
+                      onClick={() => handlePreview(doc.id)}
                       className="px-3 py-1.5 text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white rounded transition-colors"
                     >
                       Preview
